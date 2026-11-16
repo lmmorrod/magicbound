@@ -241,3 +241,16 @@ footer.foot a{color:var(--muted)}
 .brand{font:800 13px var(--f-display);letter-spacing:.02em}
 /* edit rows wrap instead of pushing "Needs booking" and × off narrow cards */
 .ed .row{flex-wrap:wrap}
+/* app pages around the planner */
+.wrap.narrow{max-width:520px}
+.btn{display:inline-block;font:600 14px var(--f-body);border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:9px 16px;border-radius:999px;cursor:pointer;text-decoration:none}
+.btn.pri{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.btn:disabled{opacity:.6;cursor:default}
+.btn.danger{color:var(--warn);border-color:var(--warn);background:none}
+.row-actions{display:flex;flex-wrap:wrap;gap:10px}
+.fld input[type=email],.fld input[type=date],.fld input[type=datetime-local]{font:14px var(--f-body);color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:6px;padding:8px;width:100%}
+.triplist{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.tripcard{display:block;text-decoration:none;color:var(--ink);border-top:5px solid var(--accent)}
+.tripcard:hover{border-color:var(--ink)}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-top:20px}
+a.editbtn{text-decoration:none}

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { THEME_PARKS, countdown, dateRange, nights, parseDate, parkKey } from "@/lib/plan";
 import type { TripData } from "@/lib/types";
-import { TripProvider, useStore, type Backend } from "./store";
+import { TripProvider, useStore, type Backend, type Connect } from "./store";
 import { DaysTab } from "./DaysTab";
 import { CalendarTab } from "./CalendarTab";
 import { CreditsTab } from "./CreditsTab";
@@ -28,10 +28,10 @@ const TABS = [
 type TabId = (typeof TABS)[number][0];
 const TAB_KEY = "mb-tab";
 
-export function Planner(props: { initial: TripData; canWrite?: boolean; backend?: Backend }) {
+export function Planner({ extra, ...props }: { initial: TripData; canWrite?: boolean; backend?: Backend; connect?: Connect; extra?: React.ReactNode }) {
   return (
     <TripProvider {...props}>
-      <Shell />
+      <Shell extra={extra} />
     </TripProvider>
   );
 }
@@ -70,7 +70,7 @@ function Hero() {
   );
 }
 
-function Shell() {
+function Shell({ extra }: { extra?: React.ReactNode }) {
   const { canWrite, edit, setEdit } = useStore();
   const [tab, setTab] = useState<TabId>("days");
   useEffect(() => {
@@ -97,6 +97,7 @@ function Shell() {
             ))}
           </div>
           <div className="navacts">
+            {extra}
             <ThemeToggle />
             {canWrite && (
               <button className="editbtn" aria-pressed={edit} onClick={() => setEdit(!edit)}>{edit ? "Done" : "Edit"}</button>

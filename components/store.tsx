@@ -20,6 +20,15 @@ export const localBackend: Backend = {
   setLLPick: async () => {},
 };
 
+/** A change pushed from the server (another person's edit, or the echo of ours). */
+export interface RemoteChange {
+  table: Table | "trips" | "ll_picks";
+  type: "INSERT" | "UPDATE" | "DELETE";
+  row: Record<string, unknown>; // new row, or the old row for DELETE
+}
+/** Subscribes to remote changes; returns an unsubscribe function. */
+export type Connect = (apply: (c: RemoteChange) => void) => () => void;
+
 export type DialogState =
   | null
   | { kind: "item"; item: Item | null; preset?: Partial<Item> }
@@ -54,8 +63,8 @@ export const useStore = () => {
 };
 
 export function TripProvider({
-  initial, canWrite = true, backend = localBackend, children,
-}: { initial: TripData; canWrite?: boolean; backend?: Backend; children: ReactNode }) {
+  initial, canWrite = true, backend = localBackend, connect, children,
+}: { initial: TripData; canWrite?: boolean; backend?: Backend; connect?: Connect; children: ReactNode }) {
   const [data, setData] = useState(initial);
   const [edit, setEdit] = useState(false);
   const [dialog, openDialog] = useState<DialogState>(null);
@@ -110,6 +119,27 @@ export function TripProvider({
   }, [data, canWrite, edit, dialog, toast, write, backend]);
 
   useEffect(() => () => clearTimeout(toastT.current), []);
+
+  useEffect(() => {
+    if (!connect) return;
+    return connect(({ table, type, row }) => {
+      setData((d) => {
+        if (table === "trips") return type === "UPDATE" ? { ...d, trip: { ...d.trip, ...(row as Partial<Trip>) } } : d;
+        if (table === "ll_picks") {
+          const same = (p: { park: string; ride_name: string }) => p.park === row.park && p.ride_name === row.ride_name;
+          const rest = d.ll_picks.filter((p) => !same(p));
+          return { ...d, ll_picks: type === "DELETE" ? rest : [...rest, { park: row.park as string, ride_name: row.ride_name as string }] };
+        }
+        const rows = d[table] as unknown as Rows[];
+        const id = row.id as string;
+        if (type === "DELETE") return { ...d, [table]: rows.filter((r) => r.id !== id) };
+        const exists = rows.some((r) => r.id === id);
+        const next = exists ? rows.map((r) => (r.id === id ? { ...r, ...row } : r)) : [...rows, row as Rows];
+        if (table === "days") next.sort((a, b) => (a.order as number) - (b.order as number));
+        return { ...d, [table]: next };
+      });
+    });
+  }, [connect]);
 
   return (
     <Ctx.Provider value={store}>
