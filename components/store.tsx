@@ -62,6 +62,9 @@ export const useStore = () => {
   return s;
 };
 
+/** The store if inside a trip, else null (e.g. on the public guide page). */
+export const useMaybeStore = () => useContext(Ctx);
+
 export function TripProvider({
   initial, canWrite = true, backend = localBackend, connect, children,
 }: { initial: TripData; canWrite?: boolean; backend?: Backend; connect?: Connect; children: ReactNode }) {

@@ -1,4 +1,5 @@
 "use client";
+import { Info } from "./Info";
 import { useEffect, useState } from "react";
 import { CT, PARK, crTag, dayItems, dayName, parkKey } from "@/lib/plan";
 import type { Credit, Day, Item, ParkKey } from "@/lib/types";
@@ -131,10 +132,13 @@ function DayEdit({ d, i }: { d: Day; i: number }) {
                   <option value="1">1</option><option value="2">2</option>
                 </select>
               ) : (
-                <label className="nb">
-                  <input type="checkbox" checked={!!it.res} onChange={(e) => setItem(it, { res: e.target.checked ? "todo" : null })} />
-                  Needs booking
-                </label>
+                <>
+                  <label className="nb">
+                    <input type="checkbox" checked={!!it.res} onChange={(e) => setItem(it, { res: e.target.checked ? "todo" : null })} />
+                    Needs booking
+                  </label>
+                  <Info id="needs-booking" />
+                </>
               )}
               <button className="del" aria-label="Delete" onClick={() => { remove("items", it.id); toast("Removed"); }}>×</button>
             </div>

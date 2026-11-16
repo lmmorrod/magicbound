@@ -8,11 +8,13 @@ import type { Day, Flight, Item, ParkKey, Stay, Trip } from "@/lib/types";
 import { newId, useStore } from "../store";
 import { PLANS, benefits, hotelById, type PlanKey } from "@/data/hotels";
 import { TripDetailsSheet } from "./TripDetailsSheet";
+import { Info } from "../Info";
 
 type StepId = "basics" | "flights" | "stays" | "dining" | "parks" | "invite" | "extras";
+const STEP_INFO: Partial<Record<StepId, string>> = { stays: "on-site", dining: "dining-plan", parks: "park-tickets", extras: "memory-maker" };
 const HIDE_KEY = (id: string) => `mb-build-hidden:${id}`;
 
-export function Sheet({ open, title, sub, onClose, children, footer }: { open: boolean; title: string; sub?: string; onClose: () => void; children: React.ReactNode; footer: React.ReactNode }) {
+export function Sheet({ open, title, sub, onClose, children, footer, info }: { open: boolean; title: string; sub?: string; onClose: () => void; children: React.ReactNode; footer: React.ReactNode; info?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -22,7 +24,7 @@ export function Sheet({ open, title, sub, onClose, children, footer }: { open: b
   }, [open]);
   return (
     <dialog ref={ref} className="sheet" onClose={onClose} aria-label={title}>
-      <h3>{title}</h3>
+      <h3>{title}{info && <Info id={info} />}</h3>
       {sub && <p className="dsub">{sub}</p>}
       <div className="sheet-body">{open && children}</div>
       <div className="dact">{footer}</div>
@@ -94,7 +96,7 @@ export function BuildChecklist() {
         {steps.map(([id, label, isDone, hint]) => (
           <li key={id} className={isDone ? "isdone" : ""}>
             <span className="tick" aria-hidden="true">{isDone ? "✓" : ""}</span>
-            <div style={{ minWidth: 0 }}><b>{label}</b><span className="hint">{hint}</span></div>
+            <div style={{ minWidth: 0 }}><b>{label}{STEP_INFO[id] && <Info id={STEP_INFO[id]!} />}</b><span className="hint">{hint}</span></div>
             <button className="btn" onClick={() => setOpen(id)}>{isDone ? "Change" : "Add"}</button>
           </li>
         ))}
@@ -249,7 +251,7 @@ function StaysSheet({ open, onClose, onSave, start, end, existing, hotels }: { o
   const lastStay = stays[stays.length - 1];
 
   return (
-    <Sheet open={open} title="Where you're staying" sub="Add each hotel in order. Splitting a stay is fine." onClose={onClose}
+    <Sheet open={open} title="Where you're staying" info="split-stay" sub="Add each hotel in order. Splitting a stay is fine." onClose={onClose}
       footer={<><span className="note" style={{ margin: 0 }}>{clashes ? "Two hotels overlap" : gaps ? `${gaps} night${gaps > 1 ? "s" : ""} not covered yet` : ""}</span><span style={{ flex: 1 }} />
         <button className="btn" onClick={onClose}>Cancel</button><button className="btn pri" disabled={!ok} onClick={() => onSave(stays)}>Save</button></>}>
       <div className="nights" aria-label="Nights covered">
@@ -277,7 +279,9 @@ function StaysSheet({ open, onClose, onSave, start, end, existing, hotels }: { o
             {h && (
               <div className="perks">
                 <span className={`pill ${h.onSite ? "booked" : "todo"}`}>{h.onSite ? `On-site · ${h.tier}` : "Off-site"}</span>
-                <ul>{benefits(h).map((b) => <li key={b}>{b}</li>)}</ul>
+                <ul>{benefits(h).map((b) => (
+                  <li key={b}>{b}{b.startsWith("Early Theme Park Entry") && <Info id="early-entry" />}{b.startsWith("Extended Evening") && <Info id="extended-evening" />}{b.startsWith("Lightning Lane") && <Info id="multi-pass" />}{b.startsWith("Dining") && <Info id="dining-reservations" />}{b.includes("Skyliner") && <Info id="skyliner" />}</li>
+                ))}</ul>
                 {h.onSite && (
                   <table className="times"><tbody>
                     {(["MK", "EP", "HS", "AK"] as const).map((p) => h.times[p] && (
@@ -295,7 +299,7 @@ function StaysSheet({ open, onClose, onSave, start, end, existing, hotels }: { o
         const mid = toISODate(addDays(parseDate(lastStay.check_in), Math.floor(nightsOf(lastStay) / 2)));
         setStays((l) => [...l.slice(0, -1), { ...lastStay, check_out: mid }, blank(mid, lastStay.check_out)]);
       }}>+ Add another hotel (split stay)</button>
-      <p className="note">Journey times are typical door-to-gate estimates. Guidance only.</p>
+      <p className="note">Journey times are typical door-to-gate estimates. Guidance only.<Info id="journey-times" /></p>
     </Sheet>
   );
 }
@@ -315,7 +319,7 @@ function DiningSheet({ open, onClose, onSave, trip }: { open: boolean; onClose: 
   const pick = (p: PlanKey) => { setK(p); setC(calc(p)); };
   const under3 = trip.child_ages.filter((a) => a < 3).length;
   return (
-    <Sheet open={open} title="Dining plan" sub={`${n} nights × ${eligible} ${eligible === 1 ? "person" : "people"} aged 3+${under3 ? ` (${under3} under-3 eat from your plate)` : ""}.`} onClose={onClose}
+    <Sheet open={open} title="Dining plan" info="dining-plan" sub={`${n} nights × ${eligible} ${eligible === 1 ? "person" : "people"} aged 3+${under3 ? ` (${under3} under-3 eat from your plate)` : ""}.`} onClose={onClose}
       footer={<><span style={{ flex: 1 }} /><button className="btn" onClick={onClose}>Cancel</button><button className="btn pri" onClick={() => onSave(k, k === "none" ? { TS: 0, QS: 0, SN: 0 } : c)}>Save</button></>}>
       <div className="choices col">
         {(Object.keys(PLANS) as PlanKey[]).map((p) => (
@@ -348,7 +352,7 @@ function ParksSheet({ open, onClose, onSave, days }: { open: boolean; onClose: (
   const [set, setSet] = useState<Record<string, ParkKey>>(init);
   useEffect(() => { if (open) setSet(init()); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <Sheet open={open} title="Park days" sub="Pick a park, then tap the days for it. Tap again to make it a free day." onClose={onClose}
+    <Sheet open={open} title="Park days" info="park-tickets" sub="Pick a park, then tap the days for it. Tap again to make it a free day." onClose={onClose}
       footer={<><span style={{ flex: 1 }} /><button className="btn" onClick={onClose}>Decide later</button><button className="btn pri" onClick={() => onSave(set)}>Save</button></>}>
       <div className="filters">
         {CHIPS.map((p) => (
@@ -378,7 +382,7 @@ function ExtrasSheet({ open, onClose, onSave, people, existing }: { open: boolea
   const [sel, setSel] = useState<string[]>([]);
   useEffect(() => { if (open) setSel(options.filter((x) => ["Park tickets", "Travel insurance", "ESTA (visa waiver)"].includes(x))); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <Sheet open={open} title="Tickets and extras" sub={`Tick what you'll need for ${people} ${people === 1 ? "person" : "people"}. Each one becomes a budget line to price up.`} onClose={onClose}
+    <Sheet open={open} title="Tickets and extras" info="esta" sub={`Tick what you'll need for ${people} ${people === 1 ? "person" : "people"}. Each one becomes a budget line to price up.`} onClose={onClose}
       footer={<><span style={{ flex: 1 }} /><button className="btn" onClick={onClose}>Cancel</button><button className="btn pri" disabled={!sel.length} onClick={() => onSave(sel)}>Add {sel.length || ""}</button></>}>
       {options.length ? (
         <ul className="checks">

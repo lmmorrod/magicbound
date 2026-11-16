@@ -1,4 +1,5 @@
 "use client";
+import { Info } from "./Info";
 import { useEffect, useRef } from "react";
 import { PARK_BG, byTime, dayName, dropItem, hh, hourRange, isLL, parkKey, shortDate, weekday } from "@/lib/plan";
 import type { Day, Item } from "@/lib/types";
@@ -193,7 +194,7 @@ export function CalendarTab() {
                 {days.map((d) => <td key={d.id} className={canWrite ? "hc" : undefined} data-dayhd={canWrite ? d.id : undefined}>{d.event}</td>)}
               </tr>
               <tr>
-                <th scope="row" className="rh">LL pass</th>
+                <th scope="row" className="rh">LL pass<Info id="lightning-lane" /></th>
                 {days.map((d) => cell(d, at(d, isLL), "LL"))}
               </tr>
               {anyTime && (

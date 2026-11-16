@@ -1,4 +1,5 @@
 "use client";
+import { Info } from "./Info";
 import { PARK, addDays, dayName, isLL, parseDate, parkKey, shortDate, toISODate } from "@/lib/plan";
 import { useStore } from "./store";
 import { AddBtn, EditBtn } from "./RecButtons";
@@ -14,11 +15,11 @@ export function LLTab() {
 
   return (
     <section id="ll">
-      <h2>Lightning Lanes</h2>
+      <h2>Lightning Lanes<Info id="lightning-lane" /></h2>
       <p className="sub">Every ride with Lightning Lane, by park and tier. Tick the ones you want so you know your picks on booking morning.</p>
       <div className="grid3" style={{ marginBottom: 18 }}>
         <div className="panel">
-          <h3>Booking opens</h3>
+          <h3><span>Booking opens<Info id="booking-windows" label="booking windows" /></span></h3>
           {trip.on_site_hotel ? (
             <>
               <div className="big">{shortDate(toISODate(open))}</div>
@@ -38,14 +39,14 @@ export function LLTab() {
           )}
         </div>
         <div className="panel">
-          <h3>Multi Pass rules</h3>
+          <h3><span>Multi Pass rules<Info id="multi-pass" /></span></h3>
           <p style={{ margin: 0, fontSize: 14 }}>
             Pick 3 rides to start, all in the same park. Only one of those 3 can be Tier 1. Once you use one (or its
             window passes) you can book another from any tier. Animal Kingdom has no tiers.
           </p>
         </div>
         <div className="panel">
-          <h3>Rough prices</h3>
+          <h3><span>Rough prices<Info id="single-pass" /></span></h3>
           <p style={{ margin: 0, fontSize: 14 }}>
             Multi Pass about $27–45 per person per day. Single Pass rides about $10–25 per person each, bought separately.
           </p>
@@ -70,7 +71,7 @@ export function LLTab() {
                 const c = tr.filter((r) => picked(k, r.name)).length;
                 return (
                   <div key={t}>
-                    <div className="tier"><span>{t || "Other"}</span><span>{c ? c + " picked" : ""}</span></div>
+                    <div className="tier"><span>{t || "Other"}{t.startsWith("Tier") && <Info id="tiers" label="a ride tier" />}{t === "Single Pass" && <Info id="single-pass" />}</span><span>{c ? c + " picked" : ""}</span></div>
                     <ul className="checks">
                       {tr.map((r) => (
                         <li key={r.id} className="erow">

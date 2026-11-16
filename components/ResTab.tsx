@@ -1,4 +1,5 @@
 "use client";
+import { Info } from "./Info";
 import { useEffect, useState } from "react";
 import { DAYMS, PARK, RES_GROUPS, byTime, dayName, longDate, needsBooking, opens, parkKey } from "@/lib/plan";
 import type { ResStatus } from "@/lib/types";
@@ -23,10 +24,10 @@ export function ResTab() {
 
   return (
     <section id="res">
-      <h2>Reservations</h2>
+      <h2>Reservations<Info id="booking-windows" /></h2>
       <p className="sub">
         Everything that needs booking, pulled from the day plan. Mark each one booked and add its confirmation number.
-        Every table-service meal shows here automatically; tick <b>Needs booking</b> on anything else in edit mode.
+        Every table-service meal shows here automatically; tick <b>Needs booking</b><Info id="needs-booking" /> on anything else in edit mode.
       </p>
       <div className="grid3" style={{ marginBottom: 18 }}>
         <div className="panel"><h3>Booked</h3><div className="big">{booked} <small>of {rows.length}</small></div></div>
@@ -36,7 +37,7 @@ export function ResTab() {
           <p className="note" style={{ marginTop: 6 }}>{now && next ? Math.ceil((+next - +now) / DAYMS) + " days away" : ""}</p>
         </div>
         <div className="panel">
-          <h3>Dining window</h3>
+          <h3><span>Dining window<Info id="dining-reservations" /></span></h3>
           <p style={{ margin: 0, fontSize: 14 }}>
             {trip.on_site_hotel
               ? <>On-site hotel guests book {rules.dining_window_days} days before check-in, for the first {rules.dining_onsite_span_days} days of the stay. Meals after that open on a rolling {rules.dining_window_days} days before each date.</>

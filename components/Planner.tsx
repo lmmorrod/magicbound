@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { THEME_PARKS, countdown, dateRange, nights, parseDate, parkKey } from "@/lib/plan";
 import type { TripData } from "@/lib/types";
 import { TripProvider, useStore, type Backend, type Connect } from "./store";
@@ -99,7 +99,9 @@ function Shell({ extra, top }: { extra?: React.ReactNode; top?: React.ReactNode 
             ))}
           </div>
           <div className="navacts">
-            {extra}
+            {/* Keyed: extra can be an element made by a server component, which React 19 dev flags otherwise. */}
+            <Fragment key="extra">{extra}</Fragment>
+            <a className="themebtn" href="/guide" target="_blank" rel="noopener" aria-label="Guide: what everything means" title="Guide: what everything means">?</a>
             <ThemeToggle />
             {canWrite && (
               <button className="editbtn" aria-pressed={edit} onClick={() => setEdit(!edit)}>{edit ? "Done" : "Edit"}</button>

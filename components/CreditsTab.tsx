@@ -1,4 +1,5 @@
 "use client";
+import { Info } from "./Info";
 import { useState } from "react";
 import { AREA_COLOUR, CREDITS, CT, areaOrder, creditOrder, creditStats, creditStatus, creditWeight, dayName, qsPlaced } from "@/lib/plan";
 import type { Credit, Trip } from "@/lib/types";
@@ -10,7 +11,7 @@ const ALLOW_FIELD: Record<Credit, keyof Trip> = { TS: "credits_ts", QS: "credits
 export function CreditsTab() {
   return (
     <section id="credits">
-      <h2>Dining credits</h2>
+      <h2>Dining credits<Info id="dining-plan" /></h2>
       <p className="sub">
         Every credit on the dining plan, scheduled or loose. Loose credits are ones you&apos;ve earmarked but not pinned to a
         day. Tap any meal to change its name, day, time or credit type; the day plan and calendar update to match. Tick
@@ -39,7 +40,7 @@ function CreditPanel({ k }: { k: Credit }) {
   return (
     <div className="panel cpanel" style={{ "--k": `var(${colour})` } as React.CSSProperties}>
       <h3>
-        {name}
+        <span>{name}<Info id={k === "TS" ? "credit-ts" : k === "QS" ? "credit-qs" : "credit-sn"} /></span>
         {edit && (
           <span className="allow">
             <label htmlFor={`al-${k}`}>On plan</label>
@@ -55,7 +56,7 @@ function CreditPanel({ k }: { k: Credit }) {
       <div className="meter" role="img" aria-label={`${s.scheduled} scheduled, ${s.loose} loose, ${s.used} used, of ${allow}`}>
         {s.cells.map((c, j) => <span key={j} className={c} />)}
       </div>
-      <div className="key"><span>■ scheduled {s.scheduled}</span><span>▨ loose {s.loose}</span><span>used {s.used}</span></div>
+      <div className="key"><span>■ scheduled {s.scheduled}</span><span>▨ loose {s.loose}<Info id="loose-credit" /></span><span>used {s.used}</span></div>
       <p className={`status${st.bad ? " bad" : ""}`}>{st.text}</p>
       <ul className="clist">
         {ordered.length ? ordered.map((i) => (
@@ -128,7 +129,7 @@ function QsWishlist() {
   });
   return (
     <div className="panel" style={{ marginTop: 18 }}>
-      <h3>Quick-service wishlist<span className="prog">{placed}/{qs_wish.length} in the plan</span></h3>
+      <h3><span>Quick-service wishlist<Info id="mobile-order" label="mobile order" /></span><span className="prog">{placed}/{qs_wish.length} in the plan</span></h3>
       <p className="note" style={{ margin: "0 0 14px" }}>
         The quick-service spots you want to try, grouped by where they are. Each shows whether it&apos;s in the plan yet.
         Ones still to place can go in as a loose credit now and be pinned to a day later.
@@ -143,7 +144,7 @@ function ParkHoursPanel() {
   const { data, edit } = useStore();
   return (
     <div className="panel">
-      <h3>Park hours</h3>
+      <h3><span>Park hours<Info id="park-hours" /></span></h3>
       <div className="scroll">
         <table>
           <thead><tr><th>Park</th><th>Opens</th><th>Closes</th>{edit && <th />}</tr></thead>
