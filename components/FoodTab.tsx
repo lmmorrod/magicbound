@@ -26,9 +26,9 @@ export function FoodTab() {
         {rows.length ? rows.map((f) => (
           <div key={f.id} className="fi" style={{ "--c": `var(${AREA_COLOUR[f.area] || "--muted"})` } as React.CSSProperties}>
             <div className="fih"><b>{f.name}{f.hi && <span className="hi">High</span>}</b><EditBtn table="food" rec={f} /></div>
-            <div className="meta">{[f.type, f.area, f.spot].filter(Boolean).join(" · ")}</div>
+            <div className="meta">{[f.type, f.area, f.spot].filter(Boolean).join(", ")}</div>
             {f.note && <div className="meta">{f.note}</div>}
-            {safeUrl(f.url) && <a href={f.url} target="_blank" rel="noopener noreferrer">View menu ↗</a>}
+            {safeUrl(f.url) && <a href={f.url} target="_blank" rel="noopener noreferrer">View menu<span className="sr-only"> (opens in a new tab)</span></a>}
           </div>
         )) : <p className="sub">Nothing matches that filter.</p>}
       </div>

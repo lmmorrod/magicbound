@@ -11,7 +11,7 @@ export const HOTELS: Hotel[] = [
   { id: "aoa", name: "Art of Animation Resort", tier: "Value", onSite: true, times: { MK: [30, "Bus"], EP: [20, "Skyliner"], HS: [20, "Skyliner"], AK: [25, "Bus"] } },
   { id: "asm", name: "All-Star Movies Resort", tier: "Value", onSite: true, times: { MK: [30, "Bus"], EP: [20, "Bus"], HS: [15, "Bus"], AK: [15, "Bus"] } },
   { id: "cbr", name: "Caribbean Beach Resort", tier: "Moderate", onSite: true, times: { MK: [30, "Bus"], EP: [15, "Skyliner"], HS: [15, "Skyliner"], AK: [25, "Bus"] } },
-  { id: "pofq", name: "Port Orleans – French Quarter", tier: "Moderate", onSite: true, times: { MK: [30, "Bus"], EP: [25, "Bus"], HS: [25, "Bus"], AK: [30, "Bus"] } },
+  { id: "pofq", name: "Port Orleans French Quarter", tier: "Moderate", onSite: true, times: { MK: [30, "Bus"], EP: [25, "Bus"], HS: [25, "Bus"], AK: [30, "Bus"] } },
   { id: "cs", name: "Coronado Springs Resort", tier: "Moderate", onSite: true, times: { MK: [30, "Bus"], EP: [20, "Bus"], HS: [15, "Bus"], AK: [15, "Bus"] } },
   { id: "rr", name: "Riviera Resort", tier: "Deluxe Villa", onSite: true, times: { MK: [30, "Bus"], EP: [10, "Skyliner"], HS: [15, "Skyliner"], AK: [25, "Bus"] } },
   { id: "bc", name: "Beach Club Resort", tier: "Deluxe", onSite: true, times: { MK: [30, "Bus"], EP: [10, "Walk"], HS: [20, "Boat"], AK: [25, "Bus"] } },

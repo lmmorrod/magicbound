@@ -16,7 +16,6 @@ export default function Guide() {
       <header className="hero">
         <div className="wrap">
           <div>
-            <div className="eyebrow">Magicbound guide</div>
             <h1>New to all this?</h1>
             <p>Lightning Lanes, dining credits, booking windows and the rest, in plain English.</p>
           </div>

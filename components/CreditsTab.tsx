@@ -35,7 +35,7 @@ function CreditPanel({ k }: { k: Credit }) {
   const st = creditStatus(s);
   const ordered = creditOrder(items.filter((i) => i.credit === k), days);
   const [loose, setLoose] = useState("");
-  const where = (id: string | null) => { const d = days.find((x) => x.id === id); return d ? `${dayName(d)} · ${d.label}` : "Loose · no day yet"; };
+  const where = (id: string | null) => { const d = days.find((x) => x.id === id); return d ? `${dayName(d)}, ${d.label}` : "Loose, no day yet"; };
 
   return (
     <div className="panel cpanel" style={{ "--k": `var(${colour})` } as React.CSSProperties}>
@@ -65,7 +65,7 @@ function CreditPanel({ k }: { k: Credit }) {
               onChange={(e) => update("items", i.id, { used: e.target.checked })} />
             <button type="button" className="cbtn" disabled={!canWrite} onClick={() => openDialog({ kind: "item", item: i })}>
               <span className={i.used ? "done" : ""}>{i.text || "Untitled"}</span>
-              <span className="when">{where(i.day_id)}{i.day_id !== null && i.time ? " · " + i.time : ""}</span>
+              <span className="when">{where(i.day_id)}{i.day_id !== null && i.time ? ` at ${i.time}` : ""}</span>
             </button>
             <span className="n">
               {creditWeight(k, i)}

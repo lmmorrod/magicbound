@@ -38,8 +38,8 @@ export function BudgetTab() {
                   <tr key={b.id}>
                     <td>{b.name}{b.note && <div className="note" style={{ marginTop: 2 }}>{b.note}</div>}</td>
                     <td className="n">{c ? m(b.cost!) : <span className="pill todo">To price</span>}</td>
-                    <td className="n">{+b.paid ? m(b.paid) : "–"}</td>
-                    <td className="n">{c ? m(Math.max(0, b.cost! - (+b.paid || 0))) : "–"}</td>
+                    <td className="n">{+b.paid ? m(b.paid) : <span className="muted">None yet</span>}</td>
+                    <td className="n">{c ? m(Math.max(0, b.cost! - (+b.paid || 0))) : <span className="muted">Not priced</span>}</td>
                     {edit && <td style={{ width: "1%" }}><EditBtn table="budget" rec={b} /></td>}
                   </tr>
                 );

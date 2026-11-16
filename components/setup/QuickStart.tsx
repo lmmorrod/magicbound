@@ -45,7 +45,6 @@ export function QuickStart({ onDone, busy = false }: { onDone: (s: Setup) => voi
   return (
     <main className="wrap narrow qs">
       <section>
-        <div className="eyebrow-dark">New trip</div>
         <h2>Let&apos;s start with the basics</h2>
         <p className="sub">Four quick things and you&apos;re in. Flights, hotels and everything else you add as you go.</p>
 
@@ -62,7 +61,7 @@ export function QuickStart({ onDone, busy = false }: { onDone: (s: Setup) => voi
         </div>
 
         <div className="panel qs-step">
-          <h3>When?<span className="prog">{datesOk ? `${n} night${n > 1 ? "s" : ""} · ${n + 1} days` : ""}</span></h3>
+          <h3>When?<span className="prog">{datesOk ? `${n} night${n > 1 ? "s" : ""}, ${n + 1} days` : ""}</span></h3>
           <div className="frow">
             <label className="fld">Arrive<input type="date" value={s.start} onChange={(e) => set({ start: e.target.value })} /></label>
             <label className="fld">Go home<input type="date" value={s.end} min={s.start || undefined} onChange={(e) => set({ end: e.target.value })} /></label>
@@ -98,7 +97,7 @@ export function QuickStart({ onDone, busy = false }: { onDone: (s: Setup) => voi
         <div className="dact" style={{ marginTop: 18 }}>
           <span className="note" style={{ margin: 0 }}>{datesOk ? "" : "Add your dates to carry on."}</span>
           <span style={{ flex: 1 }} />
-          <button className="btn pri" disabled={!datesOk || busy} onClick={() => onDone({ ...s, title })}>{busy ? "Setting up…" : "Start planning →"}</button>
+          <button className="btn pri" disabled={!datesOk || busy} onClick={() => onDone({ ...s, title })}>{busy ? "Setting up…" : "Start planning"}</button>
         </div>
       </section>
     </main>

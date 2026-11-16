@@ -44,7 +44,7 @@ export const isLL = (i: { text?: string | null }) => /lightning lane/i.test(i.te
 export function crTag(i: Pick<Item, "credit" | "n">): string {
   if (!i.credit) return "";
   const n = i.credit === "TS" && i.n > 1 ? i.n + " " : "";
-  return n + (i.credit === "SN" ? "SNACK" : i.credit);
+  return n + (i.credit === "SN" ? "Snack" : i.credit);
 }
 
 export const dayItems = (items: Item[], dayId: string) => items.filter((i) => i.day_id === dayId).sort(byTime);
@@ -75,14 +75,14 @@ export function nights(trip: Pick<Trip, "start_date" | "end_date">): number {
   return Math.round((+parseDate(trip.end_date) - +parseDate(trip.start_date)) / DAYMS);
 }
 
-/** "10–24 Jun 2027", "28 Jun – 3 Jul 2027", "30 Dec 2027 – 4 Jan 2028" */
+/** "10 to 24 Jun 2027", "28 Jun to 3 Jul 2027", "30 Dec 2027 to 4 Jan 2028" (no dashes in copy) */
 export function dateRange(start: string, end: string): string {
   const a = parseDate(start), b = parseDate(end);
   const mon = (d: Date) => d.toLocaleDateString("en-GB", { month: "short" });
   if (a.getFullYear() !== b.getFullYear())
-    return `${a.getDate()} ${mon(a)} ${a.getFullYear()} – ${b.getDate()} ${mon(b)} ${b.getFullYear()}`;
-  if (a.getMonth() !== b.getMonth()) return `${a.getDate()} ${mon(a)} – ${b.getDate()} ${mon(b)} ${b.getFullYear()}`;
-  return `${a.getDate()}–${b.getDate()} ${mon(b)} ${b.getFullYear()}`;
+    return `${a.getDate()} ${mon(a)} ${a.getFullYear()} to ${b.getDate()} ${mon(b)} ${b.getFullYear()}`;
+  if (a.getMonth() !== b.getMonth()) return `${a.getDate()} ${mon(a)} to ${b.getDate()} ${mon(b)} ${b.getFullYear()}`;
+  return `${a.getDate()} to ${b.getDate()} ${mon(b)} ${b.getFullYear()}`;
 }
 
 /** Whole days until `target` (floored), or null if it has passed. */
@@ -152,7 +152,7 @@ export function qsPlaced(key: string, items: Item[], days: Day[]): string | null
   if (!it) return null;
   if (it.day_id === null) return "Loose credit, no day yet";
   const d = days.find((x) => x.id === it.day_id);
-  return d ? `On ${dayName(d)}${it.time ? " · " + it.time : ""}` : "In the plan";
+  return d ? `On ${dayName(d)}${it.time ? ` at ${it.time}` : ""}` : "In the plan";
 }
 
 // ---- calendar ----

@@ -29,7 +29,7 @@ describe("byTime / isLL / crTag", () => {
     expect(crTag({ credit: "TS", n: 2 })).toBe("2 TS");
     expect(crTag({ credit: "TS", n: 1 })).toBe("TS");
     expect(crTag({ credit: "QS", n: 2 })).toBe("QS");
-    expect(crTag({ credit: "SN", n: 1 })).toBe("SNACK");
+    expect(crTag({ credit: "SN", n: 1 })).toBe("Snack");
     expect(crTag({ credit: null, n: 1 })).toBe("");
   });
 });
@@ -82,7 +82,7 @@ describe("quick-service placed?", () => {
   const days: Day[] = [{ id: "d1", order: 1, date: "2027-06-10", park: "MK", label: "Magic Kingdom", event: "" }];
   const items = [item({ text: "Lunch at Pecos Bill", time: "12:30" }), item({ text: "Dole Whip", day_id: null })];
   it("matches case-insensitive substrings", () => {
-    expect(qsPlaced("pecos bill", items, days)).toBe("On Thu 10 Jun · 12:30");
+    expect(qsPlaced("pecos bill", items, days)).toBe("On Thu 10 Jun at 12:30");
     expect(qsPlaced("DOLE", items, days)).toBe("Loose credit, no day yet");
     expect(qsPlaced("Satu'li", items, days)).toBeNull();
     expect(qsPlaced("  ", items, days)).toBeNull();
@@ -162,8 +162,8 @@ describe("booking windows: 14-night on-site stay", () => {
 
 describe("misc", () => {
   it("date ranges", () => {
-    expect(dateRange("2027-06-10", "2027-06-24")).toBe("10–24 Jun 2027");
-    expect(dateRange("2027-06-28", "2027-07-03")).toBe("28 Jun – 3 Jul 2027");
+    expect(dateRange("2027-06-10", "2027-06-24")).toBe("10 to 24 Jun 2027");
+    expect(dateRange("2027-06-28", "2027-07-03")).toBe("28 Jun to 3 Jul 2027");
   });
   it("budget totals", () => {
     expect(budgetTotals([{ cost: 100, paid: 40 }, { cost: null, paid: 0 }, { cost: 50, paid: 50 }])).toEqual({ total: 150, paid: 90, left: 60, toPrice: 1 });

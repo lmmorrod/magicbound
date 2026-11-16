@@ -62,10 +62,10 @@ export function ResTab() {
                   <div key={r.id} className="rrow" style={{ "--c": `var(${PARK[k][1]})` } as React.CSSProperties}>
                     <div style={{ minWidth: 0 }}>
                       <b>{r.text || "Untitled"}</b> <span className={`pill ${st}`}>{st === "booked" ? "Booked" : "To book"}</span>
-                      <div className="meta">
-                        {d ? dayName(d) + (r.time ? " · " + r.time : "") : "No day yet"}
-                        {w ? ` · opens ${longDate(w.date)}, ${w.when}` : " · check booking window"}
-                        {r.conf && !canWrite ? " · Conf " + r.conf : ""}
+                      <div className="meta metalist">
+                        <span>{d ? dayName(d) + (r.time ? ` at ${r.time}` : "") : "No day yet"}</span>
+                        <span>{w ? `Booking opens ${longDate(w.date)}, ${w.when}` : "Check the booking window"}</span>
+                        {r.conf && !canWrite && <span>Confirmation {r.conf}</span>}
                       </div>
                     </div>
                     {canWrite && (

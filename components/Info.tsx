@@ -43,7 +43,6 @@ export function Info({ id, label }: { id: string; label?: string }) {
         onClick={(e) => { e.stopPropagation(); if (e.target === e.currentTarget) setOpen(false); }}>
         {
           <>
-            <div className="eyebrow-dark">{g.category}</div>
             <h3 id={`g-${id}`}>{g.title}</h3>
             <p className="gshort">{g.short}</p>
             <div className="sheet-body">

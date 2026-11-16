@@ -73,7 +73,7 @@ export function CalendarTab() {
       if (!next) return;
       update("items", id, next);
       const d = days.find((x) => x.id === next.day_id);
-      toast(`Moved to ${d ? dayName(d) : ""}${next.time ? " · " + next.time : ""}`);
+      toast(`Moved to ${d ? dayName(d) : ""}${next.time ? ` at ${next.time}` : ""}`);
     };
 
     const down = (e: PointerEvent) => {

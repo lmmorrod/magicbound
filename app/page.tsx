@@ -15,7 +15,6 @@ export default async function Home() {
       <header className="hero">
         <div className="wrap">
           <div>
-            <div className="eyebrow">Magicbound</div>
             <h1>Plan the whole trip, together.</h1>
             <p>Day by day plans, dining credits, ride picks, bookings and budget, all in one place you both can edit.</p>
           </div>

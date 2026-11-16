@@ -30,7 +30,7 @@ export default function SetupPreview() {
   const [setup, setSetup] = useState<Setup | null>(null);
   return (
     <>
-      <div className="previewbar">Preview of the new-trip flow · nothing is saved · <Link href="/preview/setup" onClick={() => setSetup(null)}>start again</Link></div>
+      <div className="previewbar">Preview of the new-trip flow. Nothing is saved. <Link href="/preview/setup" onClick={() => setSetup(null)}>start again</Link></div>
       {setup ? <Planner initial={tripFrom(setup)} top={<BuildChecklist />} /> : <QuickStart onDone={setSetup} />}
     </>
   );

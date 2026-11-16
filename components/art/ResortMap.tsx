@@ -21,6 +21,9 @@ const HOTEL_POS: Record<string, P> = {
   pop: { x: 476, y: 372 }, aoa: { x: 456, y: 352 }, pofq: { x: 528, y: 170 }, cs: { x: 190, y: 372 }, asm: { x: 150, y: 396 },
 };
 
+const chipText = ([min, mode]: [number, string]) => `${min} min ${mode === "Walk" ? "on foot" : `by ${mode === "Skyliner" ? mode : mode.toLowerCase()}`}`;
+const chipW = (t: [number, string]) => Math.round(chipText(t).length * 9.4 + 22);
+
 export function ResortMap({ hotels, stayKeys }: { hotels: Hotel[]; stayKeys: string[] }) {
   const mine = stayKeys.filter((k) => HOTEL_POS[k]);
   const [sel, setSel] = useState<string>(mine[0] || "");
@@ -57,13 +60,12 @@ export function ResortMap({ hotels, stayKeys }: { hotels: Hotel[]; stayKeys: str
           const p = PARKS[k], t = hotel?.times[k];
           return (
             <g key={k}>
-              <circle cx={p.x} cy={p.y} r="30" fill={p.c} opacity=".18" filter="url(#soft)" />
               <circle cx={p.x} cy={p.y} r="20" fill={p.c} opacity=".9" />
               <text x={p.x} y={p.y + 44} textAnchor="middle" className="mlabel">{p.name}</text>
               {t && (
                 <g transform={`translate(${p.x + CHIP[k].x} ${p.y + CHIP[k].y})`}>
-                  <rect width="132" height="32" rx="16" fill="var(--surface)" stroke={p.c} strokeWidth="2" />
-                  <text x="66" y="21" textAnchor="middle" className="mtime">~{t[0]} min · {t[1]}</text>
+                  <rect width={chipW(t)} height="32" rx="16" fill="var(--surface)" stroke={p.c} strokeWidth="2" />
+                  <text x={chipW(t) / 2} y="21" textAnchor="middle" className="mtime">{chipText(t)}</text>
                 </g>
               )}
             </g>

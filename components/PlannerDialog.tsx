@@ -51,7 +51,7 @@ function DialogForm({ d }: { d: NonNullable<DialogState> }) {
     const v: Partial<Item> = it || { day_id: null, time: "", text: "", credit: null, n: 1, res: null, ...d.preset };
     const day = data.days.find((x) => x.id === v.day_id);
     title = it ? "Change this" : "Add to the plan";
-    sub = day ? `${dayName(day)} · ${day.label}` : "";
+    sub = day ? `${dayName(day)}, ${day.label}` : "";
     canDelete = !!it;
     onDelete = () => { if (it) { remove("items", it.id); toast("Removed"); } };
     body = (
@@ -60,8 +60,8 @@ function DialogForm({ d }: { d: NonNullable<DialogState> }) {
         <div className="frow">
           <label className="fld">Day
             <select name="fd" defaultValue={v.day_id ?? "loose"}>
-              {data.days.map((x) => <option key={x.id} value={x.id}>{`${dayName(x)} · ${x.label}`}</option>)}
-              <option value="loose">Loose · no day yet</option>
+              {data.days.map((x) => <option key={x.id} value={x.id}>{`${dayName(x)}, ${x.label}`}</option>)}
+              <option value="loose">Loose (no day yet)</option>
             </select>
           </label>
           <label className="fld" style={{ flex: "0 0 120px" }}>Time<input type="time" name="ft" defaultValue={v.time || ""} /></label>

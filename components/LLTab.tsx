@@ -48,7 +48,7 @@ export function LLTab() {
         <div className="panel">
           <h3><span>Rough prices<Info id="single-pass" /></span></h3>
           <p style={{ margin: 0, fontSize: 14 }}>
-            Multi Pass about $27–45 per person per day. Single Pass rides about $10–25 per person each, bought separately.
+            Multi Pass about $27 to $45 per person per day. Single Pass rides about $10 to $25 per person each, bought separately.
           </p>
         </div>
       </div>

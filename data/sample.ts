@@ -102,7 +102,7 @@ const food: Food[] = [
 export const SAMPLE: TripData = {
   trip: {
     id: "sample",
-    title: "Our Big Orlando Trip ✨",
+    title: "Our Big Orlando Trip",
     destination: "Walt Disney World",
     origin: "London",
     start_date: START,

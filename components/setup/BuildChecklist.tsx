@@ -34,7 +34,7 @@ export function Sheet({ open, title, sub, onClose, children, footer, info }: { o
 
 export const eligibleDiners = (t: Pick<Trip, "adults" | "child_ages">) => t.adults + t.child_ages.filter((a) => a >= 3).length;
 export const peopleLine = (t: Pick<Trip, "adults" | "child_ages">) =>
-  `${t.adults} adult${t.adults > 1 ? "s" : ""}${t.child_ages.length ? ` · ${t.child_ages.length} child${t.child_ages.length > 1 ? "ren" : ""}` : ""}`;
+  `${t.adults} adult${t.adults > 1 ? "s" : ""}${t.child_ages.length ? `, ${t.child_ages.length} child${t.child_ages.length > 1 ? "ren" : ""}` : ""}`;
 
 export function BuildChecklist() {
   const { data, canWrite, update, updateTrip, insert, remove, toast } = useStore();
@@ -59,14 +59,14 @@ export function BuildChecklist() {
   const out = flights.find((f) => f.direction === "out"), ret = flights.find((f) => f.direction === "return");
 
   const steps: [StepId, string, boolean, string][] = [
-    ["basics", "Dates and who's going", true, `${n} night${n === 1 ? "" : "s"} · ${peopleLine(trip)}`],
+    ["basics", "Dates and who's going", true, `${n} night${n === 1 ? "" : "s"}, ${peopleLine(trip)}`],
     ["flights", "Flights", flights.length > 0 || marked("flights"),
-      flights.length ? [out && `${out.flight_no || "Out"} ${out.depart}→${out.arrive}`, ret && `${ret.flight_no || "Home"} ${ret.depart}`].filter(Boolean).join(" · ")
-        : marked("flights") ? "Not booked yet · reminder on Reservations" : "Times go on your travel days and set the countdown"],
+      flights.length ? [out && `${out.flight_no || "Outbound"} ${out.depart} to ${out.arrive}`, ret && `${ret.flight_no || "Home"} ${ret.depart}`].filter(Boolean).join(", ")
+        : marked("flights") ? "Not booked yet. There's a reminder on Reservations" : "Times go on your travel days and set the countdown"],
     ["stays", "Where you're staying", stays.length > 0,
       stays.length ? stays.map((s) => `${s.name.split(" (")[0]} (${nightsOf(s)} nt)`).join(" then ") : "One hotel or a few. Unlocks on-site perks and booking dates"],
     ["dining", "Dining plan", trip.dining_plan !== null,
-      trip.dining_plan === "none" ? "No dining plan" : trip.dining_plan ? `${PLANS[trip.dining_plan].label}: ${trip.credits_ts} TS · ${trip.credits_qs} QS · ${trip.credits_sn} snacks` : "Works out your credits for every night"],
+      trip.dining_plan === "none" ? "No dining plan" : trip.dining_plan ? `${PLANS[trip.dining_plan].label}: ${trip.credits_ts} table service, ${trip.credits_qs} quick service, ${trip.credits_sn} snacks` : "Works out your credits for every night"],
     ["parks", "Park days", parkDays > 0 || marked("parks"), parkDays ? `${parkDays} park day${parkDays === 1 ? "" : "s"} planned` : "Pick a park for each day, or leave some free"],
     ["invite", "Invite someone", marked("invite"), marked("invite") ? "Invite ready (sending arrives with sharing)" : "Plan together; changes show up live"],
     ["extras", "Tickets and extras", marked("extras"), marked("extras") ? "Added to the budget, ready to price" : "Adds them to the budget so nothing's forgotten"],
@@ -119,8 +119,8 @@ export function BuildChecklist() {
           insert("flights", o);
           if (f.retDepart || f.retNo) insert("flights", r);
           replaceItems("flights", [
-            item({ day_id: first?.id, time: f.depart || null, text: `✈ ${[f.outNo, f.from && `${f.from} → Orlando`].filter(Boolean).join(" ")}${f.arrive ? `, lands ${f.arrive}` : ""}` }),
-            ...(f.retDepart || f.retNo ? [item({ day_id: last?.id, time: f.retDepart || null, text: `✈ ${[f.retNo, f.from ? `Orlando → ${f.from}` : "Flight home"].filter(Boolean).join(" ")}` })] : []),
+            item({ day_id: first?.id, time: f.depart || null, text: `Flight ${[f.outNo, f.from && `from ${f.from}`].filter(Boolean).join(" ")}${f.arrive ? `, lands ${f.arrive}` : ""}` }),
+            ...(f.retDepart || f.retNo ? [item({ day_id: last?.id, time: f.retDepart || null, text: `Flight home${f.retNo ? ` ${f.retNo}` : ""}${f.from ? ` to ${f.from}` : ""}` })] : []),
           ]);
           mark("flights", false);
           updateTrip({ arrival_time: f.arrive && first ? `${first.date}T${f.arrive}:00` : null, origin: f.from || trip.origin });
@@ -261,7 +261,7 @@ function StaysSheet({ open, onClose, onSave, start, end, existing, hotels }: { o
         const h = hotelById(s.hotel_key, hotels);
         return (
           <div key={i} className="stay">
-            <div className="fih"><b>Stay {i + 1}{s.hotel_key && s.check_in < s.check_out ? ` · ${nightsOf(s)} nights` : ""}</b>
+            <div className="fih"><b>Stay {i + 1}{s.hotel_key && s.check_in < s.check_out ? `, ${nightsOf(s)} nights` : ""}</b>
               {stays.length > 1 && <button className="eb" aria-label={`Remove stay ${i + 1}`} onClick={() => setStays((l) => l.filter((_, j) => j !== i))}>×</button>}</div>
             <label className="fld">Hotel
               <select value={s.hotel_key} onChange={(e) => pickHotel(i, e.target.value)}>
@@ -278,7 +278,7 @@ function StaysSheet({ open, onClose, onSave, start, end, existing, hotels }: { o
             </div>
             {h && (
               <div className="perks">
-                <span className={`pill ${h.onSite ? "booked" : "todo"}`}>{h.onSite ? `On-site · ${h.tier}` : "Off-site"}</span>
+                <span className={`pill ${h.onSite ? "booked" : "todo"}`}>{h.onSite ? `On-site, ${h.tier}` : "Off-site"}</span>
                 <ul>{benefits(h).map((b) => (
                   <li key={b}>{b}{b.startsWith("Early Theme Park Entry") && <Info id="early-entry" />}{b.startsWith("Extended Evening") && <Info id="extended-evening" />}{b.startsWith("Lightning Lane") && <Info id="multi-pass" />}{b.startsWith("Dining") && <Info id="dining-reservations" />}{b.includes("Skyliner") && <Info id="skyliner" />}</li>
                 ))}</ul>

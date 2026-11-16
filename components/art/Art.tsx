@@ -39,7 +39,6 @@ export function SunsetScene({ className }: { className?: string }) {
         ))}
       </g>
       {/* sun and soft clouds */}
-      <circle cx="760" cy="245" r="170" fill="url(#sunglow)" />
       <circle cx="760" cy="245" r="62" fill="var(--art-sun)" />
       <g fill="var(--art-cloud)" opacity=".75">
         <ellipse cx="300" cy="170" rx="150" ry="22" />
@@ -59,7 +58,7 @@ export function SunsetScene({ className }: { className?: string }) {
         <rect x="748" y="333" width="24" height="3" rx="1.5" />
       </g>
       {/* sky train gliding across */}
-      <g transform="translate(520 214)" fill="var(--art-train)">
+      <g transform="translate(850 214)" fill="var(--art-train)">
         <rect x="0" y="0" width="150" height="16" rx="8" />
         <rect x="-60" y="18" width="320" height="3" rx="1.5" opacity=".6" />
         {[16, 46, 76, 106].map((x) => <rect key={x} x={x} y="4" width="18" height="6" rx="3" fill="var(--art-window)" />)}
