@@ -26,12 +26,11 @@ const TABS = [
   ["pack", "Packing"],
 ] as const;
 type TabId = (typeof TABS)[number][0];
-const TAB_KEY = "mb-tab";
 
-export function Planner({ extra, ...props }: { initial: TripData; canWrite?: boolean; backend?: Backend; connect?: Connect; extra?: React.ReactNode }) {
+export function Planner({ extra, top, ...props }: { initial: TripData; canWrite?: boolean; backend?: Backend; connect?: Connect; extra?: React.ReactNode; top?: React.ReactNode }) {
   return (
     <TripProvider {...props}>
-      <Shell extra={extra} />
+      <Shell extra={extra} top={top} />
     </TripProvider>
   );
 }
@@ -70,8 +69,9 @@ function Hero() {
   );
 }
 
-function Shell({ extra }: { extra?: React.ReactNode }) {
-  const { canWrite, edit, setEdit } = useStore();
+function Shell({ extra, top }: { extra?: React.ReactNode; top?: React.ReactNode }) {
+  const { canWrite, edit, setEdit, data } = useStore();
+  const TAB_KEY = `mb-tab:${data.trip.id}`; // remembered per trip, so a new trip opens on Day by day
   const [tab, setTab] = useState<TabId>("days");
   useEffect(() => {
     let start = location.hash.slice(1);
@@ -80,7 +80,7 @@ function Shell({ extra }: { extra?: React.ReactNode }) {
     }
     if (start === "dining") start = "credits";
     if (TABS.some(([id]) => id === start)) setTab(start as TabId);
-  }, []);
+  }, [TAB_KEY]);
   const show = (id: TabId) => {
     setTab(id);
     try { localStorage.setItem(TAB_KEY, id); } catch { /* storage blocked */ }
@@ -114,6 +114,7 @@ function Shell({ extra }: { extra?: React.ReactNode }) {
             </div>
           )}
         </div>
+        {tab === "days" && top}
         {tab === "days" && <DaysTab />}
         {tab === "cal" && <CalendarTab />}
         {tab === "credits" && <CreditsTab />}

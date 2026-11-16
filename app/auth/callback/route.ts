@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
   if (code) {
     const { error } = await (await supabaseServer()).auth.exchangeCodeForSession(code);
     if (!error) return NextResponse.redirect(new URL(safeNext, url.origin));
+    console.error("[auth/callback]", error.message);
   }
   return NextResponse.redirect(new URL("/login?error=link", url.origin));
 }

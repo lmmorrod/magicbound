@@ -1,20 +1,30 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { createClient } from "@supabase/supabase-js";
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/env";
 import { Footer } from "@/components/Footer";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [msg, setMsg] = useState("");
+  const [linkFailed, setLinkFailed] = useState(false);
+  useEffect(() => setLinkFailed(new URLSearchParams(location.search).get("error") === "link"), []);
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
     setState("sending");
     const next = new URLSearchParams(location.search).get("next") || "/trips";
-    const { error } = await supabaseBrowser().auth.signInWithOtp({
+    // Implicit flow for the email only: the link carries the session itself, so it
+    // works in whichever browser opens it (the code flow only works in this one).
+    // The default Supabase emails can't be edited without custom SMTP, which rules
+    // out the token-hash link for now. /auth/finish hands the session to the app.
+    const mailer = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { flowType: "implicit", persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    });
+    const { error } = await mailer.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
+      options: { emailRedirectTo: `${location.origin}/auth/finish?next=${encodeURIComponent(next)}` },
     });
     if (error) { setState("error"); setMsg(error.message); } else setState("sent");
   };
@@ -31,6 +41,11 @@ export default function Login() {
             </div>
           ) : (
             <form className="panel" onSubmit={send}>
+              {linkFailed && (
+                <p className="banner" style={{ marginTop: 0 }}>
+                  That sign-in link didn&apos;t work. Links last an hour and only work once, so ask for a fresh one below.
+                </p>
+              )}
               <p className="note" style={{ marginTop: 0 }}>No password needed. We&apos;ll email you a link; new here and it makes your account.</p>
               <label className="fld">Email<input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label>
               {state === "error" && <p className="status bad">Couldn&apos;t send the link: {msg}</p>}

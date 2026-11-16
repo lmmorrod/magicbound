@@ -9,3 +9,4 @@ playwright-report/
 reference/
 .claude/
 *.tsbuildinfo
+.next-check/
