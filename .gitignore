@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.env*.local
+.vercel/
+coverage/
+test-results/
+playwright-report/
+# Contains personal data from the original dashboard: keep out of git
+reference/
+.claude/
+*.tsbuildinfo
