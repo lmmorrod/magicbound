@@ -21,6 +21,11 @@ export interface Trip {
   credits_qs: number;
   credits_sn: number;
   paid: boolean;
+  adults: number;
+  child_ages: number[];
+  dining_plan: "none" | "quick" | "standard" | null;
+  setup_done: string[]; // checklist steps marked done or skipped
+  hidden_tabs: string[];
 }
 
 export interface Day {
@@ -42,6 +47,7 @@ export interface Item {
   used: boolean;
   res: ResStatus | null;
   conf: string | null;
+  source?: string | null; // set on items a setup step made (e.g. "flights", "stays")
 }
 
 export interface Ride {
@@ -99,6 +105,36 @@ export interface PackItem {
   order: number;
 }
 
+export interface Flight {
+  id: string;
+  direction: "out" | "return";
+  flight_no: string;
+  from_place: string;
+  depart: string;
+  arrive: string;
+  order: number;
+}
+
+export interface Stay {
+  id: string;
+  hotel_key: string;
+  name: string;
+  tier: string;
+  on_site: boolean;
+  check_in: string;
+  check_out: string;
+  order: number;
+}
+
+/** Reference hotel (read-only, from the pack). times: park → [minutes, mode]. */
+export interface Hotel {
+  id: string;
+  name: string;
+  tier: string;
+  onSite: boolean;
+  times: Partial<Record<"MK" | "EP" | "HS" | "AK", [number, string]>>;
+}
+
 export interface LLPick {
   park: string;
   ride_name: string;
@@ -126,6 +162,9 @@ export interface TripData {
   budget: BudgetLine[];
   park_hours: ParkHours[];
   pack: PackItem[];
+  flights: Flight[];
+  stays: Stay[];
+  hotels: Hotel[]; // reference, read-only
   rules: Rules;
 }
 
@@ -138,4 +177,6 @@ export type Table =
   | "qs_wish"
   | "budget"
   | "park_hours"
-  | "pack";
+  | "pack"
+  | "flights"
+  | "stays";

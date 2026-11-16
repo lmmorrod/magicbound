@@ -6,6 +6,7 @@ import { Planner } from "@/components/Planner";
 import { QuickStart, type Setup } from "@/components/setup/QuickStart";
 import { BuildChecklist } from "@/components/setup/BuildChecklist";
 import { SAMPLE, SAMPLE_RULES } from "@/data/sample";
+import { HOTELS } from "@/data/hotels";
 import { addDays, parseDate, toISODate } from "@/lib/plan";
 import type { TripData } from "@/lib/types";
 
@@ -18,8 +19,10 @@ function tripFrom(s: Setup): TripData {
   });
   return {
     trip: { id: "preview", title: s.title, destination: s.destination, origin: "", start_date: s.start, end_date: s.end,
-      checkin_date: s.start, on_site_hotel: false, arrival_time: null, currency: "GBP", credits_ts: 0, credits_qs: 0, credits_sn: 0, paid: false },
-    days, items: [], rides: SAMPLE.rides, ll_picks: [], food: [], qs_wish: [], budget: [], park_hours: [], pack: [], rules: SAMPLE_RULES,
+      checkin_date: s.start, on_site_hotel: false, arrival_time: null, currency: "GBP", credits_ts: 0, credits_qs: 0, credits_sn: 0, paid: false,
+      adults: s.adults, child_ages: s.childAges, dining_plan: null, setup_done: [], hidden_tabs: [] },
+    days, items: [], rides: SAMPLE.rides, ll_picks: [], food: [], qs_wish: [], budget: [], park_hours: [], pack: [],
+    flights: [], stays: [], hotels: HOTELS, rules: SAMPLE_RULES,
   };
 }
 
@@ -28,7 +31,7 @@ export default function SetupPreview() {
   return (
     <>
       <div className="previewbar">Preview of the new-trip flow · nothing is saved · <Link href="/preview/setup" onClick={() => setSetup(null)}>start again</Link></div>
-      {setup ? <Planner initial={tripFrom(setup)} top={<BuildChecklist setup={setup} />} /> : <QuickStart onDone={setSetup} />}
+      {setup ? <Planner initial={tripFrom(setup)} top={<BuildChecklist />} /> : <QuickStart onDone={setSetup} />}
     </>
   );
 }

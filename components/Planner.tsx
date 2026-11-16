@@ -73,6 +73,8 @@ function Shell({ extra, top }: { extra?: React.ReactNode; top?: React.ReactNode 
   const { canWrite, edit, setEdit, data } = useStore();
   const TAB_KEY = `mb-tab:${data.trip.id}`; // remembered per trip, so a new trip opens on Day by day
   const [tab, setTab] = useState<TabId>("days");
+  const shown = TABS.filter(([id]) => !data.trip.hidden_tabs.includes(id));
+  const current: TabId = shown.some(([id]) => id === tab) ? tab : "days";
   useEffect(() => {
     let start = location.hash.slice(1);
     if (!TABS.some(([id]) => id === start)) {
@@ -92,8 +94,8 @@ function Shell({ extra, top }: { extra?: React.ReactNode; top?: React.ReactNode 
       <nav className="tabs" aria-label="Sections">
         <div className="wrap">
           <div className="tablist" role="tablist">
-            {TABS.map(([id, label]) => (
-              <button key={id} role="tab" aria-selected={tab === id} aria-controls={id} onClick={() => show(id)}>{label}</button>
+            {shown.map(([id, label]) => (
+              <button key={id} role="tab" aria-selected={current === id} aria-controls={id} onClick={() => show(id)}>{label}</button>
             ))}
           </div>
           <div className="navacts">
@@ -114,15 +116,15 @@ function Shell({ extra, top }: { extra?: React.ReactNode; top?: React.ReactNode 
             </div>
           )}
         </div>
-        {tab === "days" && top}
-        {tab === "days" && <DaysTab />}
-        {tab === "cal" && <CalendarTab />}
-        {tab === "credits" && <CreditsTab />}
-        {tab === "ll" && <LLTab />}
-        {tab === "res" && <ResTab />}
-        {tab === "food" && <FoodTab />}
-        {tab === "budget" && <BudgetTab />}
-        {tab === "pack" && <PackTab />}
+        {current === "days" && top}
+        {current === "days" && <DaysTab />}
+        {current === "cal" && <CalendarTab />}
+        {current === "credits" && <CreditsTab />}
+        {current === "ll" && <LLTab />}
+        {current === "res" && <ResTab />}
+        {current === "food" && <FoodTab />}
+        {current === "budget" && <BudgetTab />}
+        {current === "pack" && <PackTab />}
       </main>
       <Footer />
       <PlannerDialog />

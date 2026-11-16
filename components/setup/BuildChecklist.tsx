@@ -1,16 +1,18 @@
 "use client";
-// "Build your trip" panel. Each step edits the real plan through the store, so
-// what you add shows up on the days, calendar, reservations and budget at once.
+// "Build your trip" panel. Every step reads from and saves to the trip itself, so
+// what you add shows up on the days, calendar, reservations and budget straight away,
+// and is shared with everyone on the trip.
 import { useEffect, useRef, useState } from "react";
-import { PARK, addDays, dayName, nights, parseDate, shortDate, toISODate } from "@/lib/plan";
-import type { Item, ParkKey } from "@/lib/types";
+import { PARK, THEME_PARKS, addDays, dayName, nights, parkKey, parseDate, shortDate, toISODate } from "@/lib/plan";
+import type { Day, Flight, Item, ParkKey, Stay, Trip } from "@/lib/types";
 import { newId, useStore } from "../store";
-import { HOTELS, PLANS, benefits, hotelById, type PlanKey } from "@/data/hotels";
-import type { Setup } from "./QuickStart";
+import { PLANS, benefits, hotelById, type PlanKey } from "@/data/hotels";
+import { TripDetailsSheet } from "./TripDetailsSheet";
 
-type StepId = "flights" | "stays" | "dining" | "parks" | "invite" | "extras";
+type StepId = "basics" | "flights" | "stays" | "dining" | "parks" | "invite" | "extras";
+const HIDE_KEY = (id: string) => `mb-build-hidden:${id}`;
 
-function Sheet({ open, title, sub, onClose, children, footer }: { open: boolean; title: string; sub?: string; onClose: () => void; children: React.ReactNode; footer: React.ReactNode }) {
+export function Sheet({ open, title, sub, onClose, children, footer }: { open: boolean; title: string; sub?: string; onClose: () => void; children: React.ReactNode; footer: React.ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -22,140 +24,167 @@ function Sheet({ open, title, sub, onClose, children, footer }: { open: boolean;
     <dialog ref={ref} className="sheet" onClose={onClose} aria-label={title}>
       <h3>{title}</h3>
       {sub && <p className="dsub">{sub}</p>}
-      <div className="sheet-body">{children}</div>
+      <div className="sheet-body">{open && children}</div>
       <div className="dact">{footer}</div>
     </dialog>
   );
 }
 
-export function BuildChecklist({ setup }: { setup: Setup }) {
-  const { data, update, updateTrip, insert, remove, toast } = useStore();
-  const { trip, days } = data;
-  const [open, setOpen] = useState<StepId | null>(null);
-  const [done, setDone] = useState<Partial<Record<StepId, string>>>({});
-  const [hidden, setHidden] = useState(false);
-  const auto = useRef<Partial<Record<StepId, string[]>>>({}); // items each step created, replaced on re-save
-  const eligible = setup.adults + setup.childAges.filter((a) => a >= 3).length;
-  const n = nights(trip);
+export const eligibleDiners = (t: Pick<Trip, "adults" | "child_ages">) => t.adults + t.child_ages.filter((a) => a >= 3).length;
+export const peopleLine = (t: Pick<Trip, "adults" | "child_ages">) =>
+  `${t.adults} adult${t.adults > 1 ? "s" : ""}${t.child_ages.length ? ` · ${t.child_ages.length} child${t.child_ages.length > 1 ? "ren" : ""}` : ""}`;
 
-  const finish = (id: StepId, summary: string, items: Item[] = []) => {
-    (auto.current[id] || []).forEach((i) => remove("items", i));
-    items.forEach((i) => insert("items", i));
-    auto.current[id] = items.map((i) => i.id);
-    setDone((d) => ({ ...d, [id]: summary }));
-    setOpen(null);
-    toast("Added to your plan");
-  };
-  const item = (p: Partial<Item>): Item => ({ id: newId(), day_id: null, time: null, text: "", credit: null, n: 1, used: false, res: null, conf: null, ...p });
+export function BuildChecklist() {
+  const { data, canWrite, update, updateTrip, insert, remove, toast } = useStore();
+  const { trip, days, items, flights, stays, hotels } = data;
+  const [open, setOpen] = useState<StepId | null>(null);
+  const [hidden, setHiddenState] = useState(false);
+  useEffect(() => { try { setHiddenState(localStorage.getItem(HIDE_KEY(trip.id)) === "1"); } catch { /* storage blocked */ } }, [trip.id]);
+  const setHidden = (v: boolean) => { setHiddenState(v); try { v ? localStorage.setItem(HIDE_KEY(trip.id), "1") : localStorage.removeItem(HIDE_KEY(trip.id)); } catch { /* storage blocked */ } };
+
+  const n = nights(trip);
+  const marked = (s: string) => trip.setup_done.includes(s);
+  const mark = (s: string, on = true) => updateTrip({ setup_done: on ? [...new Set([...trip.setup_done, s])] : trip.setup_done.filter((x) => x !== s) });
   const dayOn = (iso: string) => days.find((d) => d.date === iso)?.id ?? null;
   const first = days[0], last = days[days.length - 1];
+  const item = (p: Partial<Item>): Item => ({ id: newId(), day_id: null, time: null, text: "", credit: null, n: 1, used: false, res: null, conf: null, ...p });
+  /** Swap the items a step made last time for a fresh set. */
+  const replaceItems = (source: string, next: Item[]) => {
+    items.filter((i) => i.source === source).forEach((i) => remove("items", i.id));
+    next.forEach((i) => insert("items", { ...i, source }));
+  };
+  const parkDays = days.filter((d) => THEME_PARKS.includes(parkKey(d.park))).length;
+  const out = flights.find((f) => f.direction === "out"), ret = flights.find((f) => f.direction === "return");
 
-  const steps: [StepId | "basics", string, string][] = [
-    ["basics", "Dates and who's going", `${n} nights · ${setup.adults} adult${setup.adults > 1 ? "s" : ""}${setup.childAges.length ? ` · ${setup.childAges.length} child${setup.childAges.length > 1 ? "ren" : ""}` : ""}`],
-    ["flights", "Flights", "Times go on your travel days and set the countdown"],
-    ["stays", "Where you're staying", "One hotel or a few. Unlocks on-site perks and booking dates"],
-    ["dining", "Dining plan", "Works out your credits for every night"],
-    ["parks", "Park days", "Pick a park for each day, or leave some free"],
-    ["invite", "Invite someone", "Plan together; changes show up live"],
-    ["extras", "Tickets and extras", "Adds them to the budget so nothing's forgotten"],
+  const steps: [StepId, string, boolean, string][] = [
+    ["basics", "Dates and who's going", true, `${n} night${n === 1 ? "" : "s"} · ${peopleLine(trip)}`],
+    ["flights", "Flights", flights.length > 0 || marked("flights"),
+      flights.length ? [out && `${out.flight_no || "Out"} ${out.depart}→${out.arrive}`, ret && `${ret.flight_no || "Home"} ${ret.depart}`].filter(Boolean).join(" · ")
+        : marked("flights") ? "Not booked yet · reminder on Reservations" : "Times go on your travel days and set the countdown"],
+    ["stays", "Where you're staying", stays.length > 0,
+      stays.length ? stays.map((s) => `${s.name.split(" (")[0]} (${nightsOf(s)} nt)`).join(" then ") : "One hotel or a few. Unlocks on-site perks and booking dates"],
+    ["dining", "Dining plan", trip.dining_plan !== null,
+      trip.dining_plan === "none" ? "No dining plan" : trip.dining_plan ? `${PLANS[trip.dining_plan].label}: ${trip.credits_ts} TS · ${trip.credits_qs} QS · ${trip.credits_sn} snacks` : "Works out your credits for every night"],
+    ["parks", "Park days", parkDays > 0 || marked("parks"), parkDays ? `${parkDays} park day${parkDays === 1 ? "" : "s"} planned` : "Pick a park for each day, or leave some free"],
+    ["invite", "Invite someone", marked("invite"), marked("invite") ? "Invite ready (sending arrives with sharing)" : "Plan together; changes show up live"],
+    ["extras", "Tickets and extras", marked("extras"), marked("extras") ? "Added to the budget, ready to price" : "Adds them to the budget so nothing's forgotten"],
   ];
-  const count = 1 + Object.keys(done).length;
+  const count = steps.filter((s) => s[2]).length;
+  const close = () => setOpen(null);
+  const saved = (msg = "Added to your plan") => { close(); toast(msg); };
 
-  if (hidden)
-    return <button className="add" style={{ margin: "0 0 16px" }} onClick={() => setHidden(false)}>Show &ldquo;Build your trip&rdquo; ({count}/{steps.length})</button>;
+  if (!canWrite) return null;
+  if (hidden || count === steps.length)
+    return (
+      <div className="buildbar">
+        <button className="add" onClick={() => { setHidden(false); if (count === steps.length) setOpen("basics"); }}>
+          {count === steps.length ? "Trip details" : `Build your trip (${count}/${steps.length})`}
+        </button>
+        <TripDetailsSheet open={open === "basics"} onClose={close} />
+      </div>
+    );
 
   return (
     <div className="panel build">
       <h3>Build your trip<span className="prog">{count}/{steps.length} done</span></h3>
       <div className="meter" style={{ "--k": "var(--accent)" } as React.CSSProperties} aria-hidden="true">
-        {steps.map(([id], i) => <span key={i} className={id === "basics" || done[id as StepId] ? "s" : ""} />)}
+        {steps.map(([id, , d]) => <span key={id} className={d ? "s" : ""} />)}
       </div>
       <ol className="steps">
-        {steps.map(([id, label, hint]) => {
-          const isDone = id === "basics" || !!done[id as StepId];
-          return (
-            <li key={id} className={isDone ? "isdone" : ""}>
-              <span className="tick" aria-hidden="true">{isDone ? "✓" : ""}</span>
-              <div style={{ minWidth: 0 }}>
-                <b>{label}</b>
-                <span className="hint">{id === "basics" ? hint : done[id as StepId] || hint}</span>
-              </div>
-              {id !== "basics" && (
-                <button className="btn" onClick={() => setOpen(id as StepId)}>{isDone ? "Change" : "Add"}</button>
-              )}
-            </li>
-          );
-        })}
+        {steps.map(([id, label, isDone, hint]) => (
+          <li key={id} className={isDone ? "isdone" : ""}>
+            <span className="tick" aria-hidden="true">{isDone ? "✓" : ""}</span>
+            <div style={{ minWidth: 0 }}><b>{label}</b><span className="hint">{hint}</span></div>
+            <button className="btn" onClick={() => setOpen(id)}>{isDone ? "Change" : "Add"}</button>
+          </li>
+        ))}
       </ol>
       <button className="linkbtn" onClick={() => setHidden(true)}>Hide for now</button>
 
-      <FlightsSheet open={open === "flights"} onClose={() => setOpen(null)}
+      <TripDetailsSheet open={open === "basics"} onClose={close} />
+
+      <FlightsSheet open={open === "flights"} onClose={close} out={out} ret={ret} later={marked("flights") && !flights.length}
         onSave={(f) => {
+          flights.forEach((x) => remove("flights", x.id));
           if (f.mode === "later") {
-            finish("flights", "Not booked yet · reminder on Reservations", [item({ day_id: first?.id, text: "Book flights", res: "todo" })]);
-            return;
+            replaceItems("flights", [item({ day_id: first?.id, text: "Book flights", res: "todo" })]);
+            mark("flights");
+            updateTrip({ arrival_time: null });
+            return saved("Reminder added to Reservations");
           }
-          if (f.arrive && first) updateTrip({ arrival_time: `${first.date}T${f.arrive}:00`, origin: f.from || trip.origin });
-          finish("flights", `${f.outNo || "Outbound"} ${f.depart}→${f.arrive} · ${f.retNo || "Return"} ${f.retDepart}`, [
-            item({ day_id: first?.id, time: f.depart || null, text: `✈ ${f.outNo} ${f.from} → Orlando, lands ${f.arrive}`.replace(/\s+/g, " ") }),
-            item({ day_id: last?.id, time: f.retDepart || null, text: `✈ ${f.retNo} Orlando → ${f.from}`.replace(/\s+/g, " ") }),
+          const o: Flight = { id: newId(), direction: "out", flight_no: f.outNo, from_place: f.from, depart: f.depart, arrive: f.arrive, order: 1 };
+          const r: Flight = { id: newId(), direction: "return", flight_no: f.retNo, from_place: f.from, depart: f.retDepart, arrive: "", order: 2 };
+          insert("flights", o);
+          if (f.retDepart || f.retNo) insert("flights", r);
+          replaceItems("flights", [
+            item({ day_id: first?.id, time: f.depart || null, text: `✈ ${[f.outNo, f.from && `${f.from} → Orlando`].filter(Boolean).join(" ")}${f.arrive ? `, lands ${f.arrive}` : ""}` }),
+            ...(f.retDepart || f.retNo ? [item({ day_id: last?.id, time: f.retDepart || null, text: `✈ ${[f.retNo, f.from ? `Orlando → ${f.from}` : "Flight home"].filter(Boolean).join(" ")}` })] : []),
           ]);
+          mark("flights", false);
+          updateTrip({ arrival_time: f.arrive && first ? `${first.date}T${f.arrive}:00` : null, origin: f.from || trip.origin });
+          saved();
         }} />
 
-      <StaysSheet open={open === "stays"} onClose={() => setOpen(null)} start={trip.start_date} end={trip.end_date}
-        onSave={(stays) => {
-          const onsite = stays.filter((s) => hotelById(s.hotel)?.onSite);
-          updateTrip({ on_site_hotel: onsite.length > 0, checkin_date: (onsite[0] || stays[0]).from });
-          const its: Item[] = [];
-          stays.forEach((s) => {
-            const h = hotelById(s.hotel)!;
-            its.push(item({ day_id: dayOn(s.from), time: "15:00", text: `Check in: ${h.name}` }));
-            if (s.to !== trip.end_date) its.push(item({ day_id: dayOn(s.to), time: "11:00", text: `Check out: ${h.name}` }));
-          });
-          finish("stays", stays.map((s) => `${hotelById(s.hotel)!.name.split(" –")[0]} (${nightsOf(s)} nt)`).join(" then "), its);
+      <StaysSheet open={open === "stays"} onClose={close} start={trip.start_date} end={trip.end_date} existing={stays} hotels={hotels}
+        onSave={(list) => {
+          stays.forEach((x) => remove("stays", x.id));
+          list.forEach((s, i) => insert("stays", { ...s, id: newId(), order: i + 1 }));
+          const onsite = list.filter((s) => s.on_site);
+          updateTrip({ on_site_hotel: onsite.length > 0, checkin_date: (onsite[0] || list[0]).check_in });
+          replaceItems("stays", list.flatMap((s) => [
+            item({ day_id: dayOn(s.check_in), time: "15:00", text: `Check in: ${s.name}` }),
+            ...(s.check_out !== trip.end_date ? [item({ day_id: dayOn(s.check_out), time: "11:00", text: `Check out: ${s.name}` })] : []),
+          ]));
+          saved();
         }} />
 
-      <DiningSheet open={open === "dining"} onClose={() => setOpen(null)} nights={n} eligible={eligible} kids={setup.childAges}
+      <DiningSheet open={open === "dining"} onClose={close} trip={trip}
         onSave={(k, c) => {
-          updateTrip({ credits_ts: c.TS, credits_qs: c.QS, credits_sn: c.SN });
-          finish("dining", k === "none" ? "No dining plan" : `${PLANS[k].label}: ${c.TS} TS · ${c.QS} QS · ${c.SN} snacks`);
+          const hidden = trip.hidden_tabs.filter((t) => t !== "credits");
+          updateTrip({ dining_plan: k, credits_ts: c.TS, credits_qs: c.QS, credits_sn: c.SN, hidden_tabs: k === "none" ? [...hidden, "credits"] : hidden });
+          saved(k === "none" ? "Dining credits tab hidden" : "Credits set");
         }} />
 
-      <ParksSheet open={open === "parks"} onClose={() => setOpen(null)}
+      <ParksSheet open={open === "parks"} onClose={close} days={days}
         onSave={(set) => {
-          Object.entries(set).forEach(([id, park]) => update("days", id, { park, label: PARK[park][0] }));
-          const c = Object.values(set).filter((p) => !["TR", "CH"].includes(p)).length;
-          finish("parks", `${c} park day${c === 1 ? "" : "s"} planned`);
+          Object.entries(set).forEach(([id, park]) => {
+            const d = days.find((x) => x.id === id);
+            if (d && d.park !== park) update("days", id, { park, label: PARK[park][0] });
+          });
+          mark("parks");
+          saved("Park days set");
         }} />
 
-      <Sheet open={open === "invite"} title="Invite someone" sub="They'll get an email link. Editors can change the plan; viewers can only look." onClose={() => setOpen(null)}
-        footer={<><span style={{ flex: 1 }} /><button className="btn" onClick={() => setOpen(null)}>Cancel</button>
-          <button className="btn pri" onClick={() => finish("invite", "Invite ready to send (sharing lands in milestone 3)")}>Send invite</button></>}>
+      <Sheet open={open === "invite"} title="Invite someone" sub="They'll get an email link. Editors can change the plan; viewers can only look." onClose={close}
+        footer={<><span style={{ flex: 1 }} /><button className="btn" onClick={close}>Cancel</button>
+          <button className="btn pri" onClick={() => { mark("invite"); saved("Noted. Invites send once sharing is built"); }}>Save</button></>}>
         <label className="fld">Their email<input type="email" placeholder="name@example.com" /></label>
         <label className="fld">They can<select defaultValue="editor"><option value="editor">Edit the plan</option><option value="viewer">Only view it</option></select></label>
-        <p className="note">Preview only: nothing is sent yet.</p>
+        <p className="note">Sending invites arrives with the sharing milestone. Nothing is emailed yet.</p>
       </Sheet>
 
-      <ExtrasSheet open={open === "extras"} onClose={() => setOpen(null)} people={setup.adults + setup.childAges.length}
+      <ExtrasSheet open={open === "extras"} onClose={close} people={trip.adults + trip.child_ages.length} existing={data.budget.map((b) => b.name)}
         onSave={(lines) => {
-          lines.forEach((l, i) => insert("budget", { id: newId(), name: l, cost: null, paid: 0, note: "", order: 100 + i }));
-          setDone((d) => ({ ...d, extras: `${lines.length} added to the budget, ready to price` }));
-          setOpen(null);
-          toast("Added to your budget");
+          const start = data.budget.reduce((m, b) => Math.max(m, b.order), 0);
+          lines.forEach((l, i) => insert("budget", { id: newId(), name: l, cost: null, paid: 0, note: "", order: start + i + 1 }));
+          mark("extras");
+          saved("Added to your budget");
         }} />
     </div>
   );
 }
 
 // ---------- flights ----------
-interface Flights { mode: "lookup" | "manual" | "later"; outNo: string; retNo: string; from: string; depart: string; arrive: string; retDepart: string }
-function FlightsSheet({ open, onClose, onSave }: { open: boolean; onClose: () => void; onSave: (f: Flights) => void }) {
-  const [f, setF] = useState<Flights>({ mode: "lookup", outNo: "", retNo: "", from: "", depart: "", arrive: "", retDepart: "" });
+interface FlightForm { mode: "lookup" | "manual" | "later"; outNo: string; retNo: string; from: string; depart: string; arrive: string; retDepart: string }
+function FlightsSheet({ open, onClose, onSave, out, ret, later }: { open: boolean; onClose: () => void; onSave: (f: FlightForm) => void; out?: Flight; ret?: Flight; later: boolean }) {
+  const init = (): FlightForm => ({ mode: later ? "later" : out ? "manual" : "lookup", outNo: out?.flight_no || "", retNo: ret?.flight_no || "", from: out?.from_place || "", depart: out?.depart || "", arrive: out?.arrive || "", retDepart: ret?.depart || "" });
+  const [f, setF] = useState<FlightForm>(init);
   const [found, setFound] = useState(false);
-  const set = (p: Partial<Flights>) => setF((x) => ({ ...x, ...p }));
+  useEffect(() => { if (open) { setF(init()); setFound(false); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const set = (p: Partial<FlightForm>) => setF((x) => ({ ...x, ...p }));
   const lookup = () => {
-    // Preview: a real lookup calls a flight-data service. These are made-up results.
-    set({ from: "London Gatwick", depart: "10:55", arrive: "15:20", retDepart: "18:40", mode: "lookup" });
+    // A real lookup needs a flight-data service (paid). Until then this shows sample times to check and edit.
+    set({ from: f.from || "London Gatwick", depart: f.depart || "10:55", arrive: f.arrive || "15:20", retDepart: f.retDepart || "18:40" });
     setFound(true);
   };
   return (
@@ -178,12 +207,12 @@ function FlightsSheet({ open, onClose, onSave }: { open: boolean; onClose: () =>
           {f.mode === "lookup" && !found && (
             <>
               <button className="btn" disabled={!f.outNo} onClick={lookup}>Look them up</button>
-              <p className="note">Preview: the lookup fills in made-up times. The real one needs a flight-data service.</p>
+              <p className="note">Automatic lookup is coming. For now this fills in sample times for you to correct.</p>
             </>
           )}
           {(f.mode === "manual" || found) && (
             <>
-              {found && <p className="banner">Found it. Check the times look right.</p>}
+              {found && <p className="banner">These are sample times. Change them to match your booking.</p>}
               <label className="fld">Flying from<input type="text" value={f.from} placeholder="e.g. Manchester" onChange={(e) => set({ from: e.target.value })} /></label>
               <div className="frow">
                 <label className="fld">Departs (outbound)<input type="time" value={f.depart} onChange={(e) => set({ depart: e.target.value })} /></label>
@@ -199,40 +228,51 @@ function FlightsSheet({ open, onClose, onSave }: { open: boolean; onClose: () =>
 }
 
 // ---------- stays ----------
-interface Stay { hotel: string; from: string; to: string }
-const nightsOf = (s: Stay) => Math.round((+parseDate(s.to) - +parseDate(s.from)) / 864e5);
-function StaysSheet({ open, onClose, onSave, start, end }: { open: boolean; onClose: () => void; onSave: (s: Stay[]) => void; start: string; end: string }) {
-  const [stays, setStays] = useState<Stay[]>([{ hotel: "", from: start, to: end }]);
-  const total = Math.round((+parseDate(end) - +parseDate(start)) / 864e5);
+type StayForm = Omit<Stay, "id" | "order">;
+const nightsOf = (s: { check_in: string; check_out: string }) => Math.round((+parseDate(s.check_out) - +parseDate(s.check_in)) / 864e5);
+function StaysSheet({ open, onClose, onSave, start, end, existing, hotels }: { open: boolean; onClose: () => void; onSave: (s: StayForm[]) => void; start: string; end: string; existing: Stay[]; hotels: import("@/lib/types").Hotel[] }) {
+  const blank = (from: string, to: string): StayForm => ({ hotel_key: "", name: "", tier: "", on_site: false, check_in: from, check_out: to });
+  const init = () => (existing.length ? existing.map(({ id: _i, order: _o, ...s }) => s) : [blank(start, end)]);
+  const [stays, setStays] = useState<StayForm[]>(init);
+  useEffect(() => { if (open) setStays(init()); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const total = Math.max(0, Math.round((+parseDate(end) - +parseDate(start)) / 864e5));
   const nightList = Array.from({ length: total }, (_, i) => toISODate(addDays(parseDate(start), i)));
-  const cover = nightList.map((d) => stays.filter((s) => s.hotel && s.from <= d && d < s.to).length);
+  const cover = nightList.map((d) => stays.filter((s) => s.hotel_key && s.check_in <= d && d < s.check_out).length);
   const gaps = cover.filter((c) => c === 0).length, clashes = cover.filter((c) => c > 1).length;
-  const setStay = (i: number, p: Partial<Stay>) => setStays((l) => l.map((s, j) => (j === i ? { ...s, ...p } : s)));
-  const ok = stays.every((s) => s.hotel && s.from < s.to) && !clashes;
-  const tiers = [...new Set(HOTELS.map((h) => h.tier))];
+  const setStay = (i: number, p: Partial<StayForm>) => setStays((l) => l.map((s, j) => (j === i ? { ...s, ...p } : s)));
+  const pickHotel = (i: number, key: string) => {
+    const h = hotelById(key, hotels);
+    setStay(i, h ? { hotel_key: h.id, name: h.name, tier: h.tier, on_site: h.onSite } : { hotel_key: "", name: "", tier: "", on_site: false });
+  };
+  const ok = stays.every((s) => s.hotel_key && s.check_in < s.check_out) && !clashes;
+  const tiers = [...new Set(hotels.map((h) => h.tier))];
+  const lastStay = stays[stays.length - 1];
 
   return (
     <Sheet open={open} title="Where you're staying" sub="Add each hotel in order. Splitting a stay is fine." onClose={onClose}
-      footer={<><span className="note" style={{ margin: 0 }}>{gaps ? `${gaps} night${gaps > 1 ? "s" : ""} not covered yet` : ""}</span><span style={{ flex: 1 }} />
+      footer={<><span className="note" style={{ margin: 0 }}>{clashes ? "Two hotels overlap" : gaps ? `${gaps} night${gaps > 1 ? "s" : ""} not covered yet` : ""}</span><span style={{ flex: 1 }} />
         <button className="btn" onClick={onClose}>Cancel</button><button className="btn pri" disabled={!ok} onClick={() => onSave(stays)}>Save</button></>}>
       <div className="nights" aria-label="Nights covered">
         {nightList.map((d, i) => <span key={d} title={shortDate(d)} className={cover[i] === 0 ? "gap" : cover[i] > 1 ? "clash" : "ok"} />)}
       </div>
       {stays.map((s, i) => {
-        const h = hotelById(s.hotel);
+        const h = hotelById(s.hotel_key, hotels);
         return (
           <div key={i} className="stay">
-            <div className="fih"><b>Stay {i + 1}{s.hotel && s.from < s.to ? ` · ${nightsOf(s)} nights` : ""}</b>
-              {stays.length > 1 && <button className="eb" aria-label="Remove this stay" onClick={() => setStays((l) => l.filter((_, j) => j !== i))}>×</button>}</div>
+            <div className="fih"><b>Stay {i + 1}{s.hotel_key && s.check_in < s.check_out ? ` · ${nightsOf(s)} nights` : ""}</b>
+              {stays.length > 1 && <button className="eb" aria-label={`Remove stay ${i + 1}`} onClick={() => setStays((l) => l.filter((_, j) => j !== i))}>×</button>}</div>
             <label className="fld">Hotel
-              <select value={s.hotel} onChange={(e) => setStay(i, { hotel: e.target.value })}>
+              <select value={s.hotel_key} onChange={(e) => pickHotel(i, e.target.value)}>
                 <option value="">Choose…</option>
-                {tiers.map((t) => <optgroup key={t} label={t}>{HOTELS.filter((x) => x.tier === t).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</optgroup>)}
+                {tiers.map((t) => <optgroup key={t} label={t}>{hotels.filter((x) => x.tier === t).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</optgroup>)}
               </select>
             </label>
+            {s.hotel_key === "off" && (
+              <label className="fld">Name (optional)<input type="text" placeholder="e.g. Villa in Kissimmee" onChange={(e) => setStay(i, { name: e.target.value.trim() || (h?.name ?? "") })} /></label>
+            )}
             <div className="frow">
-              <label className="fld">Check in<input type="date" value={s.from} min={start} max={end} onChange={(e) => setStay(i, { from: e.target.value })} /></label>
-              <label className="fld">Check out<input type="date" value={s.to} min={start} max={end} onChange={(e) => setStay(i, { to: e.target.value })} /></label>
+              <label className="fld">Check in<input type="date" value={s.check_in} min={start} max={end} onChange={(e) => setStay(i, { check_in: e.target.value })} /></label>
+              <label className="fld">Check out<input type="date" value={s.check_out} min={start} max={end} onChange={(e) => setStay(i, { check_out: e.target.value })} /></label>
             </div>
             {h && (
               <div className="perks">
@@ -250,11 +290,10 @@ function StaysSheet({ open, onClose, onSave, start, end }: { open: boolean; onCl
           </div>
         );
       })}
-      <button className="add addin" disabled={nightsOf(stays[stays.length - 1]) < 2} onClick={() => {
+      <button className="add addin" disabled={!lastStay || nightsOf(lastStay) < 2} onClick={() => {
         // Split the last stay at its midpoint; the new hotel takes the second half.
-        const lastStay = stays[stays.length - 1];
-        const mid = toISODate(addDays(parseDate(lastStay.from), Math.floor(nightsOf(lastStay) / 2)));
-        setStays((l) => [...l.slice(0, -1), { ...lastStay, to: mid }, { hotel: "", from: mid, to: lastStay.to }]);
+        const mid = toISODate(addDays(parseDate(lastStay.check_in), Math.floor(nightsOf(lastStay) / 2)));
+        setStays((l) => [...l.slice(0, -1), { ...lastStay, check_out: mid }, blank(mid, lastStay.check_out)]);
       }}>+ Add another hotel (split stay)</button>
       <p className="note">Journey times are typical door-to-gate estimates. Guidance only.</p>
     </Sheet>
@@ -262,45 +301,54 @@ function StaysSheet({ open, onClose, onSave, start, end }: { open: boolean; onCl
 }
 
 // ---------- dining ----------
-function DiningSheet({ open, onClose, onSave, nights: n, eligible, kids }: { open: boolean; onClose: () => void; onSave: (k: PlanKey, c: { TS: number; QS: number; SN: number }) => void; nights: number; eligible: number; kids: number[] }) {
-  const [k, setK] = useState<PlanKey>("standard");
+function DiningSheet({ open, onClose, onSave, trip }: { open: boolean; onClose: () => void; onSave: (k: PlanKey, c: { TS: number; QS: number; SN: number }) => void; trip: Trip }) {
+  const n = nights(trip), eligible = eligibleDiners(trip);
   const calc = (p: PlanKey) => ({ TS: PLANS[p].per.TS * n * eligible, QS: PLANS[p].per.QS * n * eligible, SN: PLANS[p].per.SN * n * eligible });
-  const [c, setC] = useState(calc("standard"));
-  useEffect(() => setC(calc(k)), [k, n, eligible]); // eslint-disable-line react-hooks/exhaustive-deps
-  const under3 = kids.filter((a) => a < 3).length;
+  const [k, setK] = useState<PlanKey>(trip.dining_plan || "standard");
+  const [c, setC] = useState(calc(k));
+  useEffect(() => {
+    if (!open) return;
+    const p = trip.dining_plan || "standard";
+    setK(p);
+    setC(trip.dining_plan && trip.dining_plan !== "none" ? { TS: trip.credits_ts, QS: trip.credits_qs, SN: trip.credits_sn } : calc(p));
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pick = (p: PlanKey) => { setK(p); setC(calc(p)); };
+  const under3 = trip.child_ages.filter((a) => a < 3).length;
   return (
     <Sheet open={open} title="Dining plan" sub={`${n} nights × ${eligible} ${eligible === 1 ? "person" : "people"} aged 3+${under3 ? ` (${under3} under-3 eat from your plate)` : ""}.`} onClose={onClose}
-      footer={<><span style={{ flex: 1 }} /><button className="btn" onClick={onClose}>Cancel</button><button className="btn pri" onClick={() => onSave(k, c)}>Save</button></>}>
+      footer={<><span style={{ flex: 1 }} /><button className="btn" onClick={onClose}>Cancel</button><button className="btn pri" onClick={() => onSave(k, k === "none" ? { TS: 0, QS: 0, SN: 0 } : c)}>Save</button></>}>
       <div className="choices col">
         {(Object.keys(PLANS) as PlanKey[]).map((p) => (
-          <button key={p} type="button" className="choice" aria-pressed={k === p} onClick={() => setK(p)}>
+          <button key={p} type="button" className="choice" aria-pressed={k === p} onClick={() => pick(p)}>
             <b>{PLANS[p].label}</b><span>{PLANS[p].note}</span>
           </button>
         ))}
       </div>
       {k !== "none" && (
-        <div className="frow" style={{ marginTop: 12 }}>
-          {(["TS", "QS", "SN"] as const).map((x) => (
-            <label key={x} className="fld">{x === "TS" ? "Table service" : x === "QS" ? "Quick service" : "Snacks"}
-              <input type="number" min={0} max={99} value={c[x]} onChange={(e) => setC({ ...c, [x]: Math.max(0, Math.min(99, +e.target.value || 0)) })} />
-            </label>
-          ))}
-        </div>
+        <>
+          <div className="frow" style={{ marginTop: 12 }}>
+            {(["TS", "QS", "SN"] as const).map((x) => (
+              <label key={x} className="fld">{x === "TS" ? "Table service" : x === "QS" ? "Quick service" : "Snacks"}
+                <input type="number" min={0} max={99} value={c[x]} onChange={(e) => setC({ ...c, [x]: Math.max(0, Math.min(99, +e.target.value || 0)) })} />
+              </label>
+            ))}
+          </div>
+          <p className="note">Worked out for you. Change any number if your package is different.</p>
+        </>
       )}
-      {k !== "none" && <p className="note">Worked out for you. Change any number if your package is different.</p>}
     </Sheet>
   );
 }
 
 // ---------- park days ----------
 const CHIPS: ParkKey[] = ["MK", "EP", "HS", "AK", "UNI", "CH"];
-function ParksSheet({ open, onClose, onSave }: { open: boolean; onClose: () => void; onSave: (s: Record<string, ParkKey>) => void }) {
-  const { days } = useStore().data;
+function ParksSheet({ open, onClose, onSave, days }: { open: boolean; onClose: () => void; onSave: (s: Record<string, ParkKey>) => void; days: Day[] }) {
   const [pick, setPick] = useState<ParkKey>("MK");
-  const [set, setSet] = useState<Record<string, ParkKey>>({});
-  const mid = days.slice(1, -1);
+  const init = () => Object.fromEntries(days.map((d) => [d.id, parkKey(d.park)])) as Record<string, ParkKey>;
+  const [set, setSet] = useState<Record<string, ParkKey>>(init);
+  useEffect(() => { if (open) setSet(init()); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <Sheet open={open} title="Park days" sub="Pick a park, then tap the days for it. Tap again to clear. Your first and last days stay as travel days." onClose={onClose}
+    <Sheet open={open} title="Park days" sub="Pick a park, then tap the days for it. Tap again to make it a free day." onClose={onClose}
       footer={<><span style={{ flex: 1 }} /><button className="btn" onClick={onClose}>Decide later</button><button className="btn pri" onClick={() => onSave(set)}>Save</button></>}>
       <div className="filters">
         {CHIPS.map((p) => (
@@ -308,12 +356,13 @@ function ParksSheet({ open, onClose, onSave }: { open: boolean; onClose: () => v
         ))}
       </div>
       <div className="daystrip">
-        {mid.map((d) => {
-          const p = set[d.id];
+        {days.map((d) => {
+          const p = set[d.id] ?? parkKey(d.park); // days added since the sheet opened
           return (
-            <button key={d.id} className="dchip" style={p ? ({ "--c": `var(${PARK[p][1]})` } as React.CSSProperties) : undefined} aria-pressed={!!p}
-              onClick={() => setSet((s) => { const n = { ...s }; if (n[d.id] === pick) delete n[d.id]; else n[d.id] = pick; return n; })}>
-              <small>{dayName(d)}</small><b>{p ? PARK[p][0] : "—"}</b>
+            <button key={d.id} className="dchip" style={{ "--c": `var(${PARK[p][1]})` } as React.CSSProperties} aria-pressed={THEME_PARKS.includes(p)}
+              aria-label={`${dayName(d)}: ${PARK[p][0]}`}
+              onClick={() => setSet((s) => ({ ...s, [d.id]: (s[d.id] ?? parkKey(d.park)) === pick ? "CH" : pick }))}>
+              <small>{dayName(d)}</small><b>{PARK[p][0]}</b>
             </button>
           );
         })}
@@ -324,16 +373,20 @@ function ParksSheet({ open, onClose, onSave }: { open: boolean; onClose: () => v
 
 // ---------- extras ----------
 const EXTRAS = ["Park tickets", "Travel insurance", "ESTA (visa waiver)", "Car hire", "Airport transfers", "Memory Maker (photos)", "Universal tickets", "Spending money"];
-function ExtrasSheet({ open, onClose, onSave, people }: { open: boolean; onClose: () => void; onSave: (l: string[]) => void; people: number }) {
-  const [sel, setSel] = useState<string[]>(["Park tickets", "Travel insurance", "ESTA (visa waiver)"]);
+function ExtrasSheet({ open, onClose, onSave, people, existing }: { open: boolean; onClose: () => void; onSave: (l: string[]) => void; people: number; existing: string[] }) {
+  const options = EXTRAS.filter((x) => !existing.includes(x));
+  const [sel, setSel] = useState<string[]>([]);
+  useEffect(() => { if (open) setSel(options.filter((x) => ["Park tickets", "Travel insurance", "ESTA (visa waiver)"].includes(x))); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <Sheet open={open} title="Tickets and extras" sub={`Tick what you'll need for ${people} ${people === 1 ? "person" : "people"}. Each one becomes a budget line to price up.`} onClose={onClose}
-      footer={<><span style={{ flex: 1 }} /><button className="btn" onClick={onClose}>Cancel</button><button className="btn pri" disabled={!sel.length} onClick={() => onSave(sel)}>Add {sel.length}</button></>}>
-      <ul className="checks">
-        {EXTRAS.map((x) => (
-          <li key={x}><label><input type="checkbox" checked={sel.includes(x)} onChange={(e) => setSel((s) => (e.target.checked ? [...s, x] : s.filter((y) => y !== x)))} /><span style={{ textDecoration: "none", color: "var(--ink)" }}>{x}</span></label></li>
-        ))}
-      </ul>
+      footer={<><span style={{ flex: 1 }} /><button className="btn" onClick={onClose}>Cancel</button><button className="btn pri" disabled={!sel.length} onClick={() => onSave(sel)}>Add {sel.length || ""}</button></>}>
+      {options.length ? (
+        <ul className="checks">
+          {options.map((x) => (
+            <li key={x}><label><input type="checkbox" checked={sel.includes(x)} onChange={(e) => setSel((s) => (e.target.checked ? [...s, x] : s.filter((y) => y !== x)))} /><span className="plain">{x}</span></label></li>
+          ))}
+        </ul>
+      ) : <p className="note">They&apos;re all in your budget already. Add anything else from the Budget tab.</p>}
     </Sheet>
   );
 }

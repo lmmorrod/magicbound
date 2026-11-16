@@ -3,14 +3,8 @@
 export type HotelTier = "Value" | "Moderate" | "Deluxe" | "Deluxe Villa" | "Off-site";
 export type Mode = "Bus" | "Skyliner" | "Monorail" | "Boat" | "Walk" | "Car";
 
-export interface Hotel {
-  id: string;
-  name: string;
-  tier: HotelTier;
-  onSite: boolean;
-  /** park key → [minutes, mode] */
-  times: Partial<Record<"MK" | "EP" | "HS" | "AK", [number, Mode]>>;
-}
+import type { Hotel } from "@/lib/types";
+export type { Hotel };
 
 export const HOTELS: Hotel[] = [
   { id: "pop", name: "Pop Century Resort", tier: "Value", onSite: true, times: { MK: [30, "Bus"], EP: [20, "Skyliner"], HS: [20, "Skyliner"], AK: [25, "Bus"] } },
@@ -29,7 +23,7 @@ export const HOTELS: Hotel[] = [
   { id: "off", name: "Somewhere off-site (villa, hotel, Airbnb…)", tier: "Off-site", onSite: false, times: {} },
 ];
 
-export const hotelById = (id: string) => HOTELS.find((h) => h.id === id);
+export const hotelById = (id: string, list: Hotel[] = HOTELS) => list.find((h) => h.id === id);
 
 /** On-site perks, worked out from the hotel tier. Shown as guidance. */
 export function benefits(h: Hotel): string[] {

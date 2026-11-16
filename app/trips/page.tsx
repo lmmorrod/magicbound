@@ -11,7 +11,6 @@ interface TripRow { id: string; title: string; start_date: string; end_date: str
 export default function Trips() {
   const router = useRouter();
   const [trips, setTrips] = useState<TripRow[] | null>(null);
-  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
   useEffect(() => {
@@ -20,25 +19,10 @@ export default function Trips() {
       const { data: u } = await sb.auth.getUser();
       if (!u.user) { router.replace("/login?next=/trips"); return; }
       const { data, error } = await sb.from("trips").select("id, title, start_date, end_date, destination").order("start_date");
-      if (error) setErr(error.message);
+      if (error) { setErr(error.message); console.error(error); }
       setTrips(data || []);
     })();
   }, [router]);
-
-  // Quick create for now; the setup wizard replaces this in milestone 4.
-  const create = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    setBusy(true); setErr("");
-    const { data, error } = await supabaseBrowser().rpc("create_trip", {
-      p_title: String(f.get("title")).trim(),
-      p_start: f.get("start"), p_end: f.get("end"),
-      p_on_site: f.get("onsite") === "on",
-    });
-    setBusy(false);
-    if (error) { setErr(error.message); return; }
-    router.push(`/trips/${data}`);
-  };
 
   return (
     <>
@@ -49,6 +33,7 @@ export default function Trips() {
         </div>
         <section>
           <h2>Your trips</h2>
+          {err && <p className="status bad">Couldn&apos;t load your trips. Refresh to try again.</p>}
           {trips === null ? <p className="loading">Loading your trips…</p> : trips.length ? (
             <div className="triplist">
               {trips.map((t) => (
@@ -62,17 +47,7 @@ export default function Trips() {
           ) : <p className="sub">No trips yet. Start one below.</p>}
         </section>
         <section>
-          <form className="panel" style={{ maxWidth: 520 }} onSubmit={create}>
-            <h3>New trip</h3>
-            <label className="fld">Trip name<input type="text" name="title" required placeholder="e.g. Our summer trip" /></label>
-            <div className="frow">
-              <label className="fld">First day<input type="date" name="start" required /></label>
-              <label className="fld">Last day<input type="date" name="end" required /></label>
-            </div>
-            <label className="nb" style={{ fontSize: 14 }}><input type="checkbox" name="onsite" defaultChecked /> Staying at an on-site hotel</label>
-            {err && <p className="status bad">{err}</p>}
-            <div className="dact"><span style={{ flex: 1 }} /><button className="btn pri" disabled={busy}>{busy ? "Creating…" : "Create trip"}</button></div>
-          </form>
+          <Link className="btn pri" href="/trips/new">+ Plan a new trip</Link>
         </section>
       </main>
       <Footer />

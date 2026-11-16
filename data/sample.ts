@@ -2,6 +2,7 @@
 // No real people, bookings or confirmation numbers.
 import type { Credit, Day, Food, Item, ParkKey, Ride, Rules, TripData } from "@/lib/types";
 import { PARK, addDays, parseDate, toISODate } from "@/lib/plan";
+import { HOTELS } from "./hotels";
 
 export const SAMPLE_RULES: Rules = {
   dining_window_days: 60,
@@ -114,6 +115,11 @@ export const SAMPLE: TripData = {
     credits_qs: 7,
     credits_sn: 7,
     paid: false,
+    adults: 2,
+    child_ages: [],
+    dining_plan: "standard",
+    setup_done: [],
+    hidden_tabs: [],
   },
   days,
   items,
@@ -154,5 +160,8 @@ export const SAMPLE: TripData = {
     { id: "p6", text: "Ponchos", list: "Shared essentials", group: "Parks", done: false, order: 6 },
     { id: "p7", text: "US plug adaptors", list: "Shared essentials", group: "Travel", done: false, order: 7 },
   ],
+  flights: [],
+  stays: [],
+  hotels: HOTELS,
   rules: SAMPLE_RULES,
 };

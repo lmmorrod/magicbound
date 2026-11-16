@@ -3,6 +3,7 @@ import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Planner } from "@/components/Planner";
+import { BuildChecklist } from "@/components/setup/BuildChecklist";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { loadTrip, supabaseBackend, supabaseConnect } from "@/lib/supabase/trip";
 import type { Role, TripData } from "@/lib/types";
@@ -33,7 +34,7 @@ export default function TripPage({ params }: { params: Promise<{ id: string }> }
       </section></main>
     );
   return (
-    <Planner initial={state.data} canWrite={state.role !== "viewer"} backend={backend} connect={connect}
+    <Planner initial={state.data} canWrite={state.role !== "viewer"} backend={backend} connect={connect} top={<BuildChecklist />}
       extra={<Link className="editbtn" href="/trips" style={{ borderColor: "var(--line)" }}>Trips</Link>} />
   );
 }

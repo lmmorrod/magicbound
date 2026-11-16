@@ -30,6 +30,8 @@ insert into t_ctx select 'trip', public.create_trip('RLS test', '2027-06-10', '2
 insert into t_ctx select 'day', id from public.days where trip_id = (select v from t_ctx where k = 'trip') order by "order" limit 1;
 insert into public.items (trip_id, day_id, text, credit)
   select (select v from t_ctx where k = 'trip'), (select v from t_ctx where k = 'day'), 'Owner item', 'TS';
+insert into public.flights (trip_id, direction, flight_no) select v, 'out', 'XX123' from t_ctx where k = 'trip';
+insert into public.stays (trip_id, hotel_key, name, check_in, check_out) select v, 'pop', 'Test hotel', '2027-06-10', '2027-06-12' from t_ctx where k = 'trip';
 
 do $$ begin
   if (select count(*) from public.days where trip_id = (select v from t_ctx where k = 'trip')) <> 3 then
@@ -80,6 +82,13 @@ begin
   exception when insufficient_privilege then null;
   end;
 
+  if (select count(*) from public.flights where trip_id = trip) <> 1 then raise exception 'FAIL: viewer should read flights'; end if;
+  begin
+    insert into public.stays (trip_id, hotel_key, name, check_in, check_out) values (trip, 'pop', 'x', '2027-06-10', '2027-06-11');
+    raise exception 'FAIL: viewer added a stay';
+  exception when insufficient_privilege then null;
+  end;
+
   begin
     insert into public.trip_members (trip_id, user_id, role) values (trip, '00000000-0000-0000-0000-0000000000a2', 'owner')
       on conflict (trip_id, user_id) do update set role = 'owner';
@@ -97,6 +106,8 @@ begin
   if (select count(*) from public.items where trip_id = trip) <> 0 then raise exception 'FAIL: outsider can read items'; end if;
   if (select count(*) from public.days where trip_id = trip) <> 0 then raise exception 'FAIL: outsider can read days'; end if;
   if (select count(*) from public.trip_members where trip_id = trip) <> 0 then raise exception 'FAIL: outsider can read members'; end if;
+  if (select count(*) from public.flights where trip_id = trip) <> 0 then raise exception 'FAIL: outsider can read flights'; end if;
+  if (select count(*) from public.stays where trip_id = trip) <> 0 then raise exception 'FAIL: outsider can read stays'; end if;
 
   update public.items set text = 'hacked' where trip_id = trip;
   get diagnostics n = row_count;

@@ -86,7 +86,11 @@ export function TripProvider({
       data, canWrite, edit: edit && canWrite, setEdit, dialog, openDialog, toast,
       update(table, id, patch) {
         if (!canWrite) return;
-        patchRows(table, (rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+        patchRows(table, (rows) => {
+          const next = rows.map((r) => (r.id === id ? { ...r, ...patch } : r));
+          if (table === "days" && "order" in (patch as object)) next.sort((a, b) => (a.order as number) - (b.order as number));
+          return next;
+        });
         write(`${table}/${id}`, () => backend.update(table, id, patch as Record<string, unknown>));
       },
       updateTrip(patch) {
@@ -97,7 +101,11 @@ export function TripProvider({
       insert(table, row) {
         if (!canWrite) return;
         const r = row as unknown as Rows;
-        patchRows(table, (rows) => [...rows, r]);
+        patchRows(table, (rows) => {
+          const next = [...rows, r];
+          if (table === "days") next.sort((a, b) => (a.order as number) - (b.order as number));
+          return next;
+        });
         write(`${table}/${r.id}`, () => backend.insert(table, r));
       },
       remove(table, id) {

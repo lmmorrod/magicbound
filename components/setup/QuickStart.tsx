@@ -34,7 +34,7 @@ function Stepper({ label, value, min, max, onChange, help }: { label: string; va
   );
 }
 
-export function QuickStart({ onDone }: { onDone: (s: Setup) => void }) {
+export function QuickStart({ onDone, busy = false }: { onDone: (s: Setup) => void; busy?: boolean }) {
   const [s, setS] = useState<Setup>({ destination: "Walt Disney World", start: "", end: "", adults: 2, childAges: [], title: "" });
   const set = (p: Partial<Setup>) => setS((x) => ({ ...x, ...p }));
   const n = nightsBetween(s.start, s.end);
@@ -45,7 +45,7 @@ export function QuickStart({ onDone }: { onDone: (s: Setup) => void }) {
   return (
     <main className="wrap narrow qs">
       <section>
-        <div className="eyebrow-dark">New trip · step 1 of 1</div>
+        <div className="eyebrow-dark">New trip</div>
         <h2>Let&apos;s start with the basics</h2>
         <p className="sub">Four quick things and you&apos;re in. Flights, hotels and everything else you add as you go.</p>
 
@@ -98,7 +98,7 @@ export function QuickStart({ onDone }: { onDone: (s: Setup) => void }) {
         <div className="dact" style={{ marginTop: 18 }}>
           <span className="note" style={{ margin: 0 }}>{datesOk ? "" : "Add your dates to carry on."}</span>
           <span style={{ flex: 1 }} />
-          <button className="btn pri" disabled={!datesOk} onClick={() => onDone({ ...s, title })}>Start planning →</button>
+          <button className="btn pri" disabled={!datesOk || busy} onClick={() => onDone({ ...s, title })}>{busy ? "Setting up…" : "Start planning →"}</button>
         </div>
       </section>
     </main>

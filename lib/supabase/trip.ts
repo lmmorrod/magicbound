@@ -2,11 +2,11 @@
 // Loading a trip, writing to it and listening for live changes, via Supabase.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Backend, Connect, RemoteChange } from "@/components/store";
-import type { Role, Rules, Table, TripData } from "@/lib/types";
+import type { Hotel, Role, Rules, Table, TripData } from "@/lib/types";
 import { SAMPLE_RULES } from "@/data/sample";
 
-const TABLES: Table[] = ["days", "items", "rides", "food", "qs_wish", "budget", "park_hours", "pack"];
-const ORDERED = new Set<Table>(["days", "rides", "food", "qs_wish", "budget", "park_hours", "pack"]);
+const TABLES: Table[] = ["days", "items", "rides", "food", "qs_wish", "budget", "park_hours", "pack", "flights", "stays"];
+const ORDERED = new Set<Table>(["days", "rides", "food", "qs_wish", "budget", "park_hours", "pack", "flights", "stays"]);
 
 /** ref_rules rows → Rules, falling back to defaults for anything missing. */
 export function parseRules(rows: { key: string; value: string }[], lastChecked?: string | null): Rules {
@@ -35,17 +35,20 @@ export async function loadTrip(sb: SupabaseClient, tripId: string): Promise<{ da
   ]);
   for (const r of [member, picks, ...rest]) if (r.error) throw r.error;
   let rules = SAMPLE_RULES;
+  let hotels: Hotel[] = [];
   if (trip.pack_id) {
-    const [pack, rr] = await Promise.all([
+    const [pack, rr, hh] = await Promise.all([
       sb.from("ref_packs").select("last_checked").eq("id", trip.pack_id).maybeSingle(),
       sb.from("ref_rules").select("key, value").eq("pack_id", trip.pack_id),
+      sb.from("ref_hotels").select("key, name, tier, on_site, times").eq("pack_id", trip.pack_id).order("order"),
     ]);
     rules = parseRules(rr.data || [], pack.data?.last_checked);
+    hotels = (hh.data || []).map((h) => ({ id: h.key, name: h.name, tier: h.tier, onSite: h.on_site, times: h.times }));
   }
   const tables = Object.fromEntries(TABLES.map((t, i) => [t, rest[i].data || []]));
   return {
     role: (member.data?.role as Role) || "viewer",
-    data: { trip, ll_picks: picks.data || [], rules, ...tables } as unknown as TripData,
+    data: { trip, ll_picks: picks.data || [], rules, hotels, ...tables } as unknown as TripData,
   };
 }
 
